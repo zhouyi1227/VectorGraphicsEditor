@@ -1,0 +1,14 @@
+Checks: >
+  bugprone-*,
+  -bugprone-invalid-enum-default-initialization,
+  -bugprone-throwing-static-initialization,
+  -bugprone-unchecked-optional-access,
+  clang-analyzer-*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  performance-*,
+  readability-duplicate-include
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*(SVG_Editor|tests)/.*'
+ExcludeHeaderFilterRegex: '.*/out/build/.*/.*_autogen/.*'
+FormatStyle: file
