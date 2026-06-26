@@ -106,7 +106,7 @@ class PropertyPanel : public QWidget {
     /// @brief 面板内持有的当前数据副本
     ShapeData m_currentData;
     /// @brief 当前界面语言
-    AppLanguage m_language = AppLanguage::SimplifiedChinese;
+    AppLanguage m_language = kDefaultLanguage;
     /// @brief 当前选中数量
     int m_selectedCount = 0;
     /// @brief 是否处于"有选中"态

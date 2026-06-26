@@ -26,6 +26,8 @@ struct SelectionFrame {
     static SelectionFrame fromRect(const QRectF& rect);
 
     bool isValid() const;
+    bool isOrthogonal(qreal tolerance = 0.0001) const;
+    SelectionFrame orthonormalized() const;
 
     QPointF topRight() const;
     QPointF bottomLeft() const;

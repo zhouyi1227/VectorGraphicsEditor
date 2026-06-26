@@ -33,7 +33,7 @@ QPalette buildLightPalette() {
     palette.setColor(QPalette::Button, QColor("#ffffff"));
     palette.setColor(QPalette::ButtonText, QColor("#1f2328"));
     palette.setColor(QPalette::BrightText, QColor("#ffffff"));
-    palette.setColor(QPalette::Highlight, QColor("#2d7ff9"));
+    palette.setColor(QPalette::Highlight, QColor(kAccentColorHex));
     palette.setColor(QPalette::HighlightedText, QColor("#ffffff"));
     palette.setColor(QPalette::Midlight, QColor("#d9dee3"));
     palette.setColor(QPalette::Mid, QColor("#c4cbd3"));
@@ -55,7 +55,7 @@ QPalette buildDarkPalette() {
     palette.setColor(QPalette::Button, QColor("#2d2d30"));
     palette.setColor(QPalette::ButtonText, QColor("#f3f6f9"));
     palette.setColor(QPalette::BrightText, QColor("#ffffff"));
-    palette.setColor(QPalette::Highlight, QColor("#2d7ff9"));
+    palette.setColor(QPalette::Highlight, QColor(kAccentColorHex));
     palette.setColor(QPalette::HighlightedText, QColor("#ffffff"));
     palette.setColor(QPalette::Midlight, QColor("#3f3f46"));
     palette.setColor(QPalette::Mid, QColor("#56565f"));

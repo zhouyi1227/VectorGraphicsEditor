@@ -19,6 +19,9 @@
 
 #include <algorithm>
 
+#include "CanvasViewConstants.h"
+#include "ThemeUtils.h"
+
 ShapeItem::ShapeItem(const ShapeData& data, QGraphicsItem* parent)
     : QGraphicsObject(parent), m_data(normalizedShapeData(data)) {
     // 选择态拖动统一交给 CanvasView 协调，避免 Qt 的临时 pos() 与持久 transform 混用。
@@ -26,7 +29,10 @@ ShapeItem::ShapeItem(const ShapeData& data, QGraphicsItem* parent)
     setZValue(m_data.zValue);
 }
 
-QRectF ShapeItem::boundingRect() const { return shape().boundingRect().adjusted(-4.0, -4.0, 4.0, 4.0); }
+QRectF ShapeItem::boundingRect() const {
+    return shape().boundingRect().adjusted(-kBoundingRectPaddingPx, -kBoundingRectPaddingPx, kBoundingRectPaddingPx,
+                                           kBoundingRectPaddingPx);
+}
 
 QPainterPath ShapeItem::shape() const { return buildInteractionPath(buildPath()); }
 
@@ -45,7 +51,7 @@ void ShapeItem::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidge
 
     // 非 Select 工具下仍保留 item 级选中框；Select 工具由 overlay 接管
     if (isSelected() && !m_previewMode && m_selectionDecorationVisible) {
-        QPen selectionPen(QColor("#2d7ff9"));
+        QPen selectionPen{QColor(kAccentColorHex)};
         selectionPen.setStyle(Qt::DashLine);
         // cosmetic = true 让线宽在所有缩放等级下都保持 1 像素
         selectionPen.setCosmetic(true);
@@ -53,7 +59,9 @@ void ShapeItem::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidge
         painter->setPen(selectionPen);
         painter->setBrush(Qt::NoBrush);
         // 在 path 外扩 6 像素作为高亮范围
-        painter->drawRect(shape().boundingRect().adjusted(-6.0, -6.0, 6.0, 6.0));
+        painter->drawRect(shape().boundingRect().adjusted(-kSelectionDecorationPaddingPx,
+                                                          -kSelectionDecorationPaddingPx, kSelectionDecorationPaddingPx,
+                                                          kSelectionDecorationPaddingPx));
     }
     painter->restore();
 }
@@ -149,7 +157,8 @@ QPainterPath ShapeItem::buildInteractionPath(const QPainterPath& path) const {
             return path;
         }
 
-        const qreal fallbackWidth = std::max<qreal>(8.0, m_data.style.strokeWidth + 6.0);
+        // 关描边时用用户原本想画的描边宽度外扩，而不是固定 8 像素
+        const qreal fallbackWidth = std::max<qreal>(m_data.style.strokeWidth + kHitPaddingExtraPx, kHitPaddingMinPx);
         QPainterPathStroker stroker;
         stroker.setWidth(fallbackWidth);
         stroker.setCapStyle(Qt::RoundCap);
@@ -158,7 +167,7 @@ QPainterPath ShapeItem::buildInteractionPath(const QPainterPath& path) const {
     }
 
     // 命中区域沿描边方向外扩，至少 8 像素、否则按 strokeWidth+6 决定。
-    const qreal strokerWidth = std::max<qreal>(8.0, m_data.style.strokeWidth + 6.0);
+    const qreal strokerWidth = std::max<qreal>(kHitPaddingMinPx, m_data.style.strokeWidth + kHitPaddingExtraPx);
     QPainterPathStroker stroker;
     stroker.setWidth(strokerWidth);
     stroker.setCapStyle(Qt::RoundCap);

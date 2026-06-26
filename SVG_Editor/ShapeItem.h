@@ -74,6 +74,8 @@ class ShapeItem : public QGraphicsObject {
     void shapeChanged(ShapeItem* item);
 
   private:
+    friend class ShapeItemTests;
+
     /// @brief 根据 m_data 与 m_previewMode 构造用于绘制 / 命中测试的路径。
     QPainterPath buildPath() const;
 

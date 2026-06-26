@@ -12,12 +12,26 @@
 
 #pragma once
 
+#include <QString>
+
 #include <cstdint>
 
 /// @brief 应用当前界面语言。
-/// @note   目前仅有 English 与 SimplifiedChinese 两种；
-///         字段宽度 8 bit 仅作预留，便于未来扩展到 256 种以内的语言集合。
+/// @note   字段宽度 8 bit 仅作预留，便于未来扩展到 256 种以内的语言集合；
+///         UI 默认展示语言为简体中文（见 @ref appLanguageToSettingsValue）。
 enum class AppLanguage : std::uint8_t {
-    English,           ///< 英文（默认）
-    SimplifiedChinese, ///< 简体中文
+    English,           ///< 英文
+    SimplifiedChinese, ///< 简体中文（UI 默认）
 };
+
+inline constexpr AppLanguage kDefaultLanguage = AppLanguage::SimplifiedChinese;
+
+/// @brief QSettings 字符串反序列化为 `AppLanguage`。
+/// @param value  QSettings 取出的字符串；不识别值（包括缺失、空串、"zh-CN"）回退到 SimplifiedChinese
+/// @return       解析得到的 AppLanguage
+AppLanguage appLanguageFromSettingsValue(const QString& value);
+
+/// @brief 把 `AppLanguage` 序列化为 QSettings 字符串。
+/// @param language 目标语言
+/// @return         "en" / "zh-CN"（与 fromSettingsValue 约定成对）
+QString appLanguageToSettingsValue(AppLanguage language);

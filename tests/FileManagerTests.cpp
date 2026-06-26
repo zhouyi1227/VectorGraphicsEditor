@@ -14,6 +14,7 @@ class FileManagerTests : public QObject {
   private slots:
     void saveAndLoadDocument();
     void rejectOldOrIncompleteDocument();
+    void rejectDuplicateShapeId();
 };
 
 void FileManagerTests::saveAndLoadDocument() {
@@ -93,6 +94,33 @@ void FileManagerTests::rejectOldOrIncompleteDocument() {
     errorMessage.clear();
     QVERIFY(!FileManager::loadFromFile(filePath, &errorMessage).has_value());
     QVERIFY(errorMessage.contains("Invalid shape data"));
+}
+
+void FileManagerTests::rejectDuplicateShapeId() {
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+
+    ShapeData a;
+    a.id = "dup-1";
+    a.type = ShapeType::Rectangle;
+    a.rect = QRectF(0.0, 0.0, 10.0, 10.0);
+    ShapeData b = a;
+
+    const QString filePath = tempDir.filePath("dup.vgjson");
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    file.write(QJsonDocument(QJsonObject{
+                                 {"version", 2},
+                                 {"canvas", QJsonObject{{"width", 800.0}, {"height", 600.0}}},
+                                 {"shapes", QJsonArray{shapeDataToJson(a), shapeDataToJson(b)}},
+                             })
+                   .toJson(QJsonDocument::Indented));
+    file.close();
+
+    QString errorMessage;
+    QVERIFY(!FileManager::loadFromFile(filePath, &errorMessage).has_value());
+    QVERIFY2(errorMessage.contains("Duplicate shape id"), qPrintable(errorMessage));
+    QVERIFY2(errorMessage.contains("dup-1"), qPrintable(errorMessage));
 }
 
 QTEST_APPLESS_MAIN(FileManagerTests)

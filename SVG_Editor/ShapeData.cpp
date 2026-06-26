@@ -18,16 +18,9 @@
 #include <algorithm>
 #include <cmath>
 
-namespace {
+#include "I18n.h"
 
-/// @brief 在两种语言之间二选一地返回字符串字面量。
-/// @param language 目标语言
-/// @param english  英文原文（UTF-8 字节串）
-/// @param chinese  简体中文原文（UTF-8 字节串）
-/// @return 翻译后的 QString；language 为 SimplifiedChinese 取后者，否则取前者
-QString textForLanguage(AppLanguage language, const char* english, const char* chinese) {
-    return language == AppLanguage::SimplifiedChinese ? QString::fromUtf8(chinese) : QString::fromUtf8(english);
-}
+namespace {
 
 /// @brief 将 QPointF 编码为 {"x":..., "y":...} JSON 对象。
 QJsonObject pointToJson(const QPointF& point) {
@@ -182,37 +175,27 @@ bool shapeSupportsFill(ShapeType type) {
 }
 
 QString shapeDisplayName(ShapeType type, AppLanguage language) {
-    switch (type) {
-    case ShapeType::Point:
-        return textForLanguage(language, "Point", "点");
-    case ShapeType::Line:
-        return textForLanguage(language, "Line", "直线");
-    case ShapeType::Polyline:
-        return textForLanguage(language, "Polyline", "折线");
-    case ShapeType::Circle:
-        return textForLanguage(language, "Circle", "圆");
-    case ShapeType::Ellipse:
-        return textForLanguage(language, "Ellipse", "椭圆");
-    case ShapeType::Rectangle:
-        return textForLanguage(language, "Rectangle", "矩形");
-    case ShapeType::Polygon:
-        return textForLanguage(language, "Polygon", "多边形");
+    const auto& table = i18n::shapeDisplayNames();
+    const auto index = static_cast<std::size_t>(type);
+    if (index < table.size()) {
+        return pickLocalized(language, "shape.display_name", table[index]);
     }
-    return textForLanguage(language, "Unknown", "未知图形");
+    return pickLocalized(language, "shape.unknown", LocalizedString{QStringLiteral("Unknown"), QStringLiteral("未知图形")});
 }
 
 QString penStyleDisplayName(Qt::PenStyle style, AppLanguage language) {
+    const auto& table = i18n::penStyleDisplayNames();
     switch (style) {
     case Qt::SolidLine:
-        return textForLanguage(language, "Solid", "实线");
+        return pickLocalized(language, "pen.solid", table[0]);
     case Qt::DashLine:
-        return textForLanguage(language, "Dash", "虚线");
+        return pickLocalized(language, "pen.dash", table[1]);
     case Qt::DotLine:
-        return textForLanguage(language, "Dot", "点线");
+        return pickLocalized(language, "pen.dot", table[2]);
     case Qt::DashDotLine:
-        return textForLanguage(language, "Dash Dot", "点划线");
+        return pickLocalized(language, "pen.dashdot", table[3]);
     default:
-        return textForLanguage(language, "Solid", "实线");
+        return pickLocalized(language, "pen.fallback", table[0]);
     }
 }
 

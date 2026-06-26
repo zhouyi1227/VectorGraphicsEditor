@@ -20,8 +20,15 @@ class ShapeDataTests : public QObject {
 
   private slots:
     void circleSerializationRoundTrip();
+    void rectangleSerializationRoundTrip();
+    void polylineSerializationRoundTrip();
+    void ellipseSerializationRoundTrip();
     void polylineTranslationMovesEveryPoint();
     void applyTransformComposesOntoShapeData();
+    void normalizedShapeDataClampsNegativeDimensions();
+    void normalizedShapeDataForcesCircleToSquare();
+    void normalizedShapeDataIsIdempotentOnRectangle();
+    void normalizedShapeDataIsIdempotentOnPoint();
     void missingTransformOrStrokeEnabledFailsToDeserialize();
     void selectionFrameFollowsAffineRotation();
     void selectionFrameTranslationMovesAllCorners();
@@ -59,6 +66,44 @@ void ShapeDataTests::circleSerializationRoundTrip() {
     QCOMPARE(restoredData.zValue, source.zValue);
 }
 
+void ShapeDataTests::rectangleSerializationRoundTrip() {
+    ShapeData source;
+    source.id = "rect-1";
+    source.type = ShapeType::Rectangle;
+    source.rect = QRectF(12.0, 24.0, 80.0, 60.0);
+    source.style.strokeEnabled = true;
+    source.style.strokeColor = QColor("#ffaa5500");
+    source.style.fillEnabled = true;
+    source.style.fillColor = QColor("#ff00aacc");
+
+    const std::optional<ShapeData> restored = shapeDataFromJson(shapeDataToJson(source));
+    QVERIFY(restored.has_value());
+    QCOMPARE(restored->rect, source.rect);
+    QCOMPARE(restored->style.fillColor, source.style.fillColor);
+}
+
+void ShapeDataTests::polylineSerializationRoundTrip() {
+    ShapeData source;
+    source.id = "polyline-1";
+    source.type = ShapeType::Polyline;
+    source.points = {QPointF(1.0, 2.0), QPointF(3.0, 4.0), QPointF(5.0, 6.0)};
+
+    const std::optional<ShapeData> restored = shapeDataFromJson(shapeDataToJson(source));
+    QVERIFY(restored.has_value());
+    QCOMPARE(restored->points, source.points);
+}
+
+void ShapeDataTests::ellipseSerializationRoundTrip() {
+    ShapeData source;
+    source.id = "ellipse-1";
+    source.type = ShapeType::Ellipse;
+    source.rect = QRectF(10.0, 20.0, 40.0, 30.0);
+
+    const std::optional<ShapeData> restored = shapeDataFromJson(shapeDataToJson(source));
+    QVERIFY(restored.has_value());
+    QCOMPARE(restored->rect, source.rect);
+}
+
 void ShapeDataTests::polylineTranslationMovesEveryPoint() {
     ShapeData data;
     data.type = ShapeType::Polyline;
@@ -83,6 +128,38 @@ void ShapeDataTests::applyTransformComposesOntoShapeData() {
     applyTransformToShapeData(data, delta);
 
     QCOMPARE(data.transform, delta * QTransform::fromTranslate(5.0, 8.0));
+}
+
+void ShapeDataTests::normalizedShapeDataClampsNegativeDimensions() {
+    ShapeData data;
+    data.type = ShapeType::Rectangle;
+    data.rect = QRectF(10.0, 20.0, -30.0, -40.0);
+
+    const ShapeData normalized = normalizedShapeData(data);
+    QCOMPARE(normalized.rect, QRectF(-20.0, -20.0, 30.0, 40.0));
+}
+
+void ShapeDataTests::normalizedShapeDataForcesCircleToSquare() {
+    ShapeData data;
+    data.type = ShapeType::Circle;
+    data.rect = QRectF(10.0, 20.0, 20.0, 40.0);
+
+    const ShapeData normalized = normalizedShapeData(data);
+    QCOMPARE(normalized.rect, QRectF(10.0, 20.0, 40.0, 40.0));
+}
+
+void ShapeDataTests::normalizedShapeDataIsIdempotentOnRectangle() {
+    ShapeData data;
+    data.type = ShapeType::Rectangle;
+    data.rect = QRectF(1.0, 2.0, 3.0, 4.0);
+    QCOMPARE(normalizedShapeData(data).rect, data.rect);
+}
+
+void ShapeDataTests::normalizedShapeDataIsIdempotentOnPoint() {
+    ShapeData data;
+    data.type = ShapeType::Point;
+    data.points = {QPointF(3.0, 4.0)};
+    QCOMPARE(normalizedShapeData(data).points, data.points);
 }
 
 void ShapeDataTests::missingTransformOrStrokeEnabledFailsToDeserialize() {

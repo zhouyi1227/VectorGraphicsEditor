@@ -28,6 +28,10 @@ QPointF normalizedVector(const QPointF& vector) {
     return QPointF(vector.x() / length, vector.y() / length);
 }
 
+qreal dotProduct(const QPointF& lhs, const QPointF& rhs) { return lhs.x() * rhs.x() + lhs.y() * rhs.y(); }
+
+qreal crossProduct(const QPointF& lhs, const QPointF& rhs) { return lhs.x() * rhs.y() - lhs.y() * rhs.x(); }
+
 } // namespace
 
 SelectionFrame SelectionFrame::fromRect(const QRectF& rect) {
@@ -42,6 +46,35 @@ SelectionFrame SelectionFrame::fromRect(const QRectF& rect) {
 
 bool SelectionFrame::isValid() const {
     return std::hypot(xAxis.x(), xAxis.y()) > 0.0 && std::hypot(yAxis.x(), yAxis.y()) > 0.0;
+}
+
+bool SelectionFrame::isOrthogonal(qreal tolerance) const {
+    const qreal xLength = std::hypot(xAxis.x(), xAxis.y());
+    const qreal yLength = std::hypot(yAxis.x(), yAxis.y());
+    if (qFuzzyIsNull(xLength) || qFuzzyIsNull(yLength)) {
+        return false;
+    }
+
+    return std::abs(dotProduct(xAxis, yAxis)) <= tolerance * xLength * yLength;
+}
+
+SelectionFrame SelectionFrame::orthonormalized() const {
+    if (!isValid()) {
+        return *this;
+    }
+
+    const QPointF frameCenter = center();
+    QPointF xDirection = normalizedVector(xAxis);
+    const qreal xLength = std::max(std::hypot(xAxis.x(), xAxis.y()), kMinimumAxisLength);
+    const qreal yLength = std::max(std::hypot(yAxis.x(), yAxis.y()), kMinimumAxisLength);
+    const qreal orientation = crossProduct(xAxis, yAxis) < 0.0 ? -1.0 : 1.0;
+    const QPointF yDirection(orientation * -xDirection.y(), orientation * xDirection.x());
+
+    SelectionFrame frame;
+    frame.xAxis = QPointF(xDirection.x() * xLength, xDirection.y() * xLength);
+    frame.yAxis = QPointF(yDirection.x() * yLength, yDirection.y() * yLength);
+    frame.topLeft = frameCenter - 0.5 * (frame.xAxis + frame.yAxis);
+    return frame;
 }
 
 QPointF SelectionFrame::topRight() const { return topLeft + xAxis; }

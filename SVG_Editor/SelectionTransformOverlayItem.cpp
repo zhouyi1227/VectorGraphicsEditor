@@ -15,6 +15,9 @@
 #include <QPainter>
 #include <QPainterPath>
 
+#include "CanvasViewConstants.h"
+#include "ThemeUtils.h"
+
 namespace {
 
 // 4 个角点方形手柄的边长（场景坐标）
@@ -48,7 +51,8 @@ QRectF SelectionTransformOverlayItem::boundingRect() const {
 
     QRectF bounds = m_frame.boundingRect();
     if (!m_handlesVisible) {
-        return bounds.adjusted(-4.0, -4.0, 4.0, 4.0);
+        return bounds.adjusted(-kBoundingRectPaddingPx, -kBoundingRectPaddingPx, kBoundingRectPaddingPx,
+                               kBoundingRectPaddingPx);
     }
 
     bounds = bounds.united(handleRect(Handle::Rotate));
@@ -81,7 +85,7 @@ void SelectionTransformOverlayItem::paint(QPainter* painter, const QStyleOptionG
     painter->setRenderHint(QPainter::Antialiasing, true);
 
     // 1) 选区虚框
-    QPen framePen(QColor("#2d7ff9"));
+    QPen framePen{QColor(kAccentColorHex)};
     framePen.setWidthF(1.0);
     framePen.setStyle(Qt::DashLine);
     // cosmetic: 1px 不会随场景缩放变化（避免在高 zoom 下变成粗线）
@@ -99,14 +103,14 @@ void SelectionTransformOverlayItem::paint(QPainter* painter, const QStyleOptionG
     painter->drawLine(m_frame.topCenter(), rotateHandleCenter());
 
     // 3) 4 个角点方形手柄（白底蓝框）
-    painter->setPen(QPen(QColor("#2d7ff9")));
+    painter->setPen(QPen(QColor(kAccentColorHex)));
     painter->setBrush(QColor("#ffffff"));
     for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight}) {
         painter->drawRect(handleRect(handle));
     }
 
     // 4) 旋转手柄（蓝底圆）
-    painter->setBrush(QColor("#2d7ff9"));
+    painter->setBrush(QColor(kAccentColorHex));
     painter->drawEllipse(handleRect(Handle::Rotate));
     painter->restore();
 }

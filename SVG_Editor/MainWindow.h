@@ -186,7 +186,7 @@ class MainWindow : public QMainWindow {
     /// @brief 语言切换的互斥组
     QActionGroup* m_languageActionGroup = nullptr;
     /// @brief 当前语言
-    AppLanguage m_language = AppLanguage::SimplifiedChinese;
+    AppLanguage m_language = kDefaultLanguage;
     /// @brief 当前主题模式
     ThemeMode m_themeMode = ThemeMode::System;
     /// @brief 当前已打开文件路径；空表示 Untitled

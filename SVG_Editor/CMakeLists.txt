@@ -2,6 +2,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 set(SVG_EDITOR_CORE_SOURCES
   AppLanguage.h
+  AppLanguage.cpp
+  CanvasGeometry.h
+  CanvasGeometry.cpp
+  CanvasViewConstants.h
+  I18n.h
+  I18n.cpp
   SelectionFrame.cpp
   SelectionFrame.h
   ShapeData.cpp
@@ -11,6 +17,17 @@ set(SVG_EDITOR_CORE_SOURCES
 )
 
 set(SVG_EDITOR_APP_SOURCES
+  CreationStrategy.h
+  DragCreationStrategy.h
+  DragCreationStrategy.cpp
+  PathCreationStrategy.h
+  PathCreationStrategy.cpp
+  MultiShapeSession.h
+  MultiShapeSession.cpp
+  MainWindowActions.h
+  MainWindowActions.cpp
+  PropertyPanelGeometryFields.h
+  TutorialManualContent.h
   main.cpp
   ThemeMode.h
   ThemeUtils.cpp
@@ -31,32 +48,18 @@ set(SVG_EDITOR_APP_SOURCES
   PropertyPanel.h
 )
 
-set_property(GLOBAL APPEND PROPERTY SVG_EDITOR_SOURCE_FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThemeMode.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThemeUtils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThemeUtils.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/TutorialDialog.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/TutorialDialog.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/CanvasView.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/CanvasView.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/SelectionTransformOverlayItem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/SelectionTransformOverlayItem.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/AppLanguage.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/SelectionFrame.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/SelectionFrame.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeData.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeData.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeItem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeItem.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeFactory.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ShapeFactory.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/FileManager.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/FileManager.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/PropertyPanel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/PropertyPanel.h)
+# 全项目源文件清单（format / lint target 使用），单一来源避免双份维护。
+# 路径用绝对路径：format-check 的 cwd 是根 ${CMAKE_SOURCE_DIR}，而这些源在子目录 SVG_Editor/ 中。
+set_property(GLOBAL PROPERTY
+  SVG_EDITOR_SOURCE_FILES
+  ${SVG_EDITOR_CORE_SOURCES} ${SVG_EDITOR_APP_SOURCES})
+foreach(_src IN LISTS SVG_EDITOR_SOURCE_FILES)
+  if(NOT IS_ABSOLUTE "${_src}")
+    list(REMOVE_ITEM SVG_EDITOR_SOURCE_FILES "${_src}")
+    list(APPEND SVG_EDITOR_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
+  endif()
+endforeach()
+set_property(GLOBAL PROPERTY SVG_EDITOR_SOURCE_FILES "${SVG_EDITOR_SOURCE_FILES}")
 
 add_library(svg_editor_warnings INTERFACE)
 

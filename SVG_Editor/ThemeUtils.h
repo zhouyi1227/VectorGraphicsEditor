@@ -19,6 +19,8 @@
 
 class QApplication;
 
+inline constexpr auto kAccentColorHex = "#2d7ff9";
+
 /// @brief 根据主题模式构建一个完整的 QPalette。
 /// @param mode  `System` 会被解析为 `Light` / `Dark`
 /// @return      对应主题的 QPalette

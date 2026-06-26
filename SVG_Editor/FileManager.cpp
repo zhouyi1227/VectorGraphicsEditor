@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------
 // @brief FileManager.h 中声明的静态方法的实现
 // @details 写入采用 QJsonDocument::Indented 便于人读/调试；
-//          读取对缺省字段做兜底（canvas 默认 1200×800，shapes 缺失视为空），
-//          单个 shape 反序列化失败会被静默跳过（见 FIXME）。
+//          读取对缺省字段做兜底（canvas 默认 1200×800，shapes 缺失视为空）；
+//          任何反序列化失败、缺 type 字段、非空 id 重复都会让整个文件加载失败，
+//          并通过 errorMessage 把具体原因回给调用方。
 // @layer   core
 // =====================================================================
 
@@ -13,6 +14,10 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+
+#include <unordered_set>
+
+#include "CanvasViewConstants.h"
 
 bool FileManager::saveToFile(const QString& filePath, const DocumentData& document, QString* errorMessage) {
     // 把所有 ShapeData 预序列化为 JSON 数组
@@ -76,22 +81,30 @@ std::optional<DocumentData> FileManager::loadFromFile(const QString& filePath, Q
 
     DocumentData data;
     // 画布尺寸缺省回退到 1200×800（与 MainWindow 的默认值一致）
-    data.canvasSize = QSizeF(canvas.value("width").toDouble(1200.0), canvas.value("height").toDouble(800.0));
+    data.canvasSize =
+        QSizeF(canvas.value("width").toDouble(kDefaultCanvasWidth), canvas.value("height").toDouble(kDefaultCanvasHeight));
 
     const QJsonArray shapes = root.value("shapes").toArray();
+    std::unordered_set<QString> seenIds;
     int shapeIndex = 0;
     for (const auto& value : shapes) {
         const std::optional<ShapeData> shape = shapeDataFromJson(value.toObject());
-        if (shape.has_value()) {
-            data.shapes.append(*shape);
-            ++shapeIndex;
-            continue;
+        if (!shape.has_value()) {
+            if (errorMessage != nullptr) {
+                *errorMessage = QString("Invalid shape data at index %1.").arg(shapeIndex);
+            }
+            return std::nullopt;
         }
 
-        if (errorMessage != nullptr) {
-            *errorMessage = QString("Invalid shape data at index %1.").arg(shapeIndex);
+        // id 可空但非空时必须全局唯一；空 id 视为"未指定"，跳过查重
+        if (!shape->id.isEmpty() && !seenIds.insert(shape->id).second) {
+            if (errorMessage != nullptr) {
+                *errorMessage = QString("Duplicate shape id \"%1\" at index %2.").arg(shape->id, QString::number(shapeIndex));
+            }
+            return std::nullopt;
         }
-        return std::nullopt;
+        data.shapes.append(*shape);
+        ++shapeIndex;
     }
 
     return data;

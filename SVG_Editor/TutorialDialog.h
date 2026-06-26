@@ -35,7 +35,7 @@ class TutorialDialog : public QDialog {
     /// @brief 重新构造窗口标题、按钮文本、HTML 内容。
     void retranslateUi();
 
-    /// @brief 按当前语言产出完整 HTML 字符串（包含界面、工具、文件、快捷键等章节）。
+    /// @brief 按当前语言返回完整 HTML 手册。
     QString buildManualHtml() const;
 
     /// @brief 显示手册内容的 QTextBrowser；外部链接被关闭以避免误跳
@@ -43,5 +43,5 @@ class TutorialDialog : public QDialog {
     /// @brief 关闭按钮（accept）
     QPushButton* m_closeButton = nullptr;
     /// @brief 当前手册语言
-    AppLanguage m_language = AppLanguage::SimplifiedChinese;
+    AppLanguage m_language = kDefaultLanguage;
 };

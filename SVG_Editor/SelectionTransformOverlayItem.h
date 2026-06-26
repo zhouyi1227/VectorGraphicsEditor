@@ -22,6 +22,7 @@
 
 #include <cstdint>
 
+#include "CanvasGeometry.h"
 #include "SelectionFrame.h"
 
 class QPainter;
@@ -37,17 +38,8 @@ class SelectionTransformOverlayItem : public QGraphicsObject {
     Q_OBJECT
 
   public:
-    /// @brief 手柄位置枚举。
-    /// @note  `None` 表示「未命中任何手柄」，仅作为 `handleAt()` 的返回值使用，
-    ///        不参与绘制与命中计算。
-    enum class Handle : std::uint8_t {
-        None,        ///< 无命中（仅 handleAt 返回值）
-        TopLeft,     ///< 左上角缩放手柄
-        TopRight,    ///< 右上角缩放手柄
-        BottomLeft,  ///< 左下角缩放手柄
-        BottomRight, ///< 右下角缩放手柄
-        Rotate,      ///< 选区上方的圆形旋转手柄
-    };
+    /// @brief 手柄位置枚举（与 CanvasHandle 一一对应；ui 层用此名以与图形化语义对齐）
+    using Handle = CanvasHandle;
 
     /// @brief 构造。手柄默认隐藏，z 值固定为 1e6。
     explicit SelectionTransformOverlayItem(QGraphicsItem* parent = nullptr);

@@ -1,13 +1,3 @@
-// =====================================================================
-// MainWindow.cpp
-// ---------------------------------------------------------------------
-// @brief MainWindow 的实现
-// @details 启动顺序（构造时）：
-//          loadLanguage() → setupUi → setupActions → setupToolbar → setupMenus
-//          → connectSignals → setLanguage(m_language) → 状态栏 "Ready"
-// @layer   ui
-// =====================================================================
-
 #include "MainWindow.h"
 
 #include <QAction>
@@ -26,6 +16,8 @@
 #include <QToolBar>
 
 #include "FileManager.h"
+#include "I18n.h"
+#include "MainWindowActions.h"
 #include "PropertyPanel.h"
 #include "ShapeItem.h"
 #include "ThemeUtils.h"
@@ -33,66 +25,53 @@
 
 namespace {
 
-/// @brief 二选一返回字符串。
-QString textForLanguage(AppLanguage language, const QString& english, const QString& chinese) {
-    return language == AppLanguage::SimplifiedChinese ? chinese : english;
-}
-
-/// @brief 工具枚举的本地化标签（与 shapeDisplayName 类似，但语言切换时是 QAction 文本）。
 QString toolLabel(CanvasView::Tool tool, AppLanguage language) {
+    const auto& table = i18n::shapeDisplayNames();
     switch (tool) {
     case CanvasView::Tool::Select:
-        return textForLanguage(language, "Select", "选择");
+        return i18n::tr(language, "tool.select", "Select", "选择");
     case CanvasView::Tool::Point:
-        return textForLanguage(language, "Point", "点");
+        return pickLocalized(language, "tool.point", table[0]);
     case CanvasView::Tool::Line:
-        return textForLanguage(language, "Line", "直线");
+        return pickLocalized(language, "tool.line", table[1]);
     case CanvasView::Tool::Polyline:
-        return textForLanguage(language, "Polyline", "折线");
+        return pickLocalized(language, "tool.polyline", table[2]);
     case CanvasView::Tool::Circle:
-        return textForLanguage(language, "Circle", "圆");
+        return pickLocalized(language, "tool.circle", table[3]);
     case CanvasView::Tool::Ellipse:
-        return textForLanguage(language, "Ellipse", "椭圆");
+        return pickLocalized(language, "tool.ellipse", table[4]);
     case CanvasView::Tool::Rectangle:
-        return textForLanguage(language, "Rectangle", "矩形");
+        return pickLocalized(language, "tool.rectangle", table[5]);
     case CanvasView::Tool::Polygon:
-        return textForLanguage(language, "Polygon", "多边形");
+        return pickLocalized(language, "tool.polygon", table[6]);
     }
-    return textForLanguage(language, "Unknown", "未知");
+
+    return i18n::tr(language, "tool.unknown", "Unknown", "未知");
 }
 
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    // 1) 读取上次保存的语言（默认 zh-CN）
     m_language = loadLanguage();
     m_themeMode = loadThemeMode();
-    // 2) 构造 UI 子模块与 dock
     setupUi();
-    // 3) 创建所有 QAction 与 ActionGroup（含快捷键）
     setupActions();
-    // 4) 工具栏（先于菜单：工具按钮的 checked 状态需要 ActionGroup 已有成员）
     setupToolbar();
-    // 5) 菜单栏
     setupMenus();
-    // 6) 桥接所有信号槽
     connectSignals();
     setThemeMode(m_themeMode);
-    // 7) 通知所有子模块切换语言并刷新自身
     setLanguage(m_language);
-    statusBar()->showMessage(textForLanguage(m_language, "Ready", "就绪"));
+    statusBar()->showMessage(i18n::tr(m_language, "status.ready", "Ready", "就绪"));
 }
 
 AppLanguage MainWindow::loadLanguage() const {
     const QSettings settings;
-    const QString value = settings.value("ui/language", "zh-CN").toString();
-    // "en" 视为英文；其他（含缺失、zh-CN、其他）一律回退到简体中文
-    return value == "en" ? AppLanguage::English : AppLanguage::SimplifiedChinese;
+    return appLanguageFromSettingsValue(settings.value("ui/language", appLanguageToSettingsValue(kDefaultLanguage)).toString());
 }
 
 void MainWindow::saveLanguage() const {
     QSettings settings;
-    settings.setValue("ui/language", m_language == AppLanguage::English ? "en" : "zh-CN");
+    settings.setValue("ui/language", appLanguageToSettingsValue(m_language));
 }
 
 ThemeMode MainWindow::loadThemeMode() const {
@@ -109,12 +88,10 @@ void MainWindow::setLanguage(AppLanguage language) {
     m_language = language;
     saveLanguage();
 
-    // 通知子模块
     m_canvasView->setLanguage(language);
     m_propertyPanel->setLanguage(language);
     m_tutorialDialog->setLanguage(language);
 
-    // 同步语言菜单的勾选态
     if (m_englishAction != nullptr) {
         m_englishAction->setChecked(language == AppLanguage::English);
     }
@@ -123,7 +100,7 @@ void MainWindow::setLanguage(AppLanguage language) {
     }
 
     retranslateUi();
-    statusBar()->showMessage(textForLanguage(m_language, "Language updated.", "界面语言已更新。"), 2500);
+    statusBar()->showMessage(i18n::tr(m_language, "status.language_updated", "Language updated.", "界面语言已更新。"), 2500);
 }
 
 void MainWindow::setThemeMode(ThemeMode mode) {
@@ -151,10 +128,10 @@ void MainWindow::setupUi() {
 
     m_propertyPanel = new PropertyPanel(this);
     m_propertyPanel->setMinimumWidth(300);
+
     m_propertyDock = new QDockWidget(this);
     m_propertyDock->setObjectName("propertyDock");
     m_propertyDock->setMinimumWidth(320);
-    // 属性面板允许左右停靠
     m_propertyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     m_propertyDock->setWidget(m_propertyPanel);
     addDockWidget(Qt::RightDockWidgetArea, m_propertyDock);
@@ -165,152 +142,134 @@ void MainWindow::setupUi() {
 }
 
 void MainWindow::setupActions() {
-    m_openAction = new QAction(this);
-    m_saveAction = new QAction(this);
-    m_saveAsAction = new QAction(this);
-    m_exportAction = new QAction(this);
-    m_exitAction = new QAction(this);
-    m_deleteAction = new QAction(this);
-    m_copyAction = new QAction(this);
-    m_pasteAction = new QAction(this);
-    m_clearAction = new QAction(this);
-    m_showTutorialAction = new QAction(this);
-    m_themeSystemAction = new QAction(this);
-    m_themeLightAction = new QAction(this);
-    m_themeDarkAction = new QAction(this);
-    m_englishAction = new QAction(this);
-    m_simplifiedChineseAction = new QAction(this);
-
-    // 用 Qt 标准快捷键（平台自适应：macOS 走 Cmd，其余走 Ctrl）
-    m_openAction->setShortcut(QKeySequence::Open);
-    m_saveAction->setShortcut(QKeySequence::Save);
-    m_saveAsAction->setShortcut(QKeySequence::SaveAs);
-    m_deleteAction->setShortcut(QKeySequence::Delete);
-    m_copyAction->setShortcut(QKeySequence::Copy);
-    m_pasteAction->setShortcut(QKeySequence::Paste);
-    m_exitAction->setShortcut(QKeySequence::Quit);
-
     m_toolActionGroup = new QActionGroup(this);
     m_toolActionGroup->setExclusive(true);
 
     m_themeActionGroup = new QActionGroup(this);
     m_themeActionGroup->setExclusive(true);
-    m_themeSystemAction->setCheckable(true);
-    m_themeLightAction->setCheckable(true);
-    m_themeDarkAction->setCheckable(true);
-    m_themeActionGroup->addAction(m_themeSystemAction);
-    m_themeActionGroup->addAction(m_themeLightAction);
-    m_themeActionGroup->addAction(m_themeDarkAction);
 
     m_languageActionGroup = new QActionGroup(this);
     m_languageActionGroup->setExclusive(true);
-    m_englishAction->setCheckable(true);
-    m_simplifiedChineseAction->setCheckable(true);
+
+    const QList<ActionDescriptor> descriptors = {
+        {"open", QKeySequence::Open, false, {}, [this]() { openDocument(); }},
+        {"save", QKeySequence::Save, false, {}, [this]() { saveDocument(); }},
+        {"save_as", QKeySequence::SaveAs, false, {}, [this]() { saveDocumentAs(); }},
+        {"export", std::nullopt, false, {}, [this]() { exportImage(); }},
+        {"exit", QKeySequence::Quit, false, {}, [this]() { close(); }},
+        {"delete", QKeySequence::Delete, false, {}, [this]() { deleteSelection(); }},
+        {"copy", QKeySequence::Copy, false, {}, [this]() { m_canvasView->copySelectedItem(); }},
+        {"paste", QKeySequence::Paste, false, {}, [this]() { m_canvasView->pasteCopiedItem(); }},
+        {"clear", std::nullopt, false, {}, [this]() {
+             m_canvasView->clearCanvas();
+             m_currentFilePath.clear();
+             updateWindowTitle();
+         }},
+        {"tutorial", std::nullopt, false, {}, [this]() { showTutorial(); }},
+        {"theme_system", std::nullopt, true, {}, [this]() { setThemeMode(ThemeMode::System); }},
+        {"theme_light", std::nullopt, true, {}, [this]() { setThemeMode(ThemeMode::Light); }},
+        {"theme_dark", std::nullopt, true, {}, [this]() { setThemeMode(ThemeMode::Dark); }},
+        {"language_en", std::nullopt, true, {}, [this]() { setLanguage(AppLanguage::English); }},
+        {"language_zh", std::nullopt, true, {}, [this]() { setLanguage(AppLanguage::SimplifiedChinese); }},
+    };
+
+    setupActionsFromDescriptors(this, descriptors, [this](const char* id, QAction* action) {
+        const QString key = QString::fromLatin1(id);
+        if (key == "open") {
+            m_openAction = action;
+        } else if (key == "save") {
+            m_saveAction = action;
+        } else if (key == "save_as") {
+            m_saveAsAction = action;
+        } else if (key == "export") {
+            m_exportAction = action;
+        } else if (key == "exit") {
+            m_exitAction = action;
+        } else if (key == "delete") {
+            m_deleteAction = action;
+        } else if (key == "copy") {
+            m_copyAction = action;
+        } else if (key == "paste") {
+            m_pasteAction = action;
+        } else if (key == "clear") {
+            m_clearAction = action;
+        } else if (key == "tutorial") {
+            m_showTutorialAction = action;
+        } else if (key == "theme_system") {
+            m_themeSystemAction = action;
+        } else if (key == "theme_light") {
+            m_themeLightAction = action;
+        } else if (key == "theme_dark") {
+            m_themeDarkAction = action;
+        } else if (key == "language_en") {
+            m_englishAction = action;
+        } else if (key == "language_zh") {
+            m_simplifiedChineseAction = action;
+        }
+    });
+
+    m_themeActionGroup->addAction(m_themeSystemAction);
+    m_themeActionGroup->addAction(m_themeLightAction);
+    m_themeActionGroup->addAction(m_themeDarkAction);
     m_languageActionGroup->addAction(m_englishAction);
     m_languageActionGroup->addAction(m_simplifiedChineseAction);
+
+    for (const CanvasView::Tool tool :
+         {CanvasView::Tool::Select, CanvasView::Tool::Point, CanvasView::Tool::Line, CanvasView::Tool::Polyline,
+          CanvasView::Tool::Circle, CanvasView::Tool::Ellipse, CanvasView::Tool::Rectangle, CanvasView::Tool::Polygon}) {
+        createToolAction(tool);
+    }
 }
 
 void MainWindow::setupMenus() {
     m_fileMenu = menuBar()->addMenu(QString());
-    m_fileMenu->addAction(m_openAction);
-    m_fileMenu->addAction(m_saveAction);
-    m_fileMenu->addAction(m_saveAsAction);
-    m_fileMenu->addAction(m_exportAction);
-    m_fileMenu->addSeparator();
-    m_fileMenu->addAction(m_exitAction);
-
     m_editMenu = menuBar()->addMenu(QString());
-    m_editMenu->addAction(m_copyAction);
-    m_editMenu->addAction(m_pasteAction);
-    m_editMenu->addAction(m_deleteAction);
-    m_editMenu->addAction(m_clearAction);
-
     m_viewMenu = menuBar()->addMenu(QString());
-    m_viewMenu->addAction(m_togglePropertyDockAction);
-    m_themeMenu = m_viewMenu->addMenu(QString());
-    m_themeMenu->addAction(m_themeSystemAction);
-    m_themeMenu->addAction(m_themeLightAction);
-    m_themeMenu->addAction(m_themeDarkAction);
-
+    m_themeMenu = new QMenu(this);
     m_toolMenu = menuBar()->addMenu(QString());
-    m_selectionToolMenu = m_toolMenu->addMenu(QString());
-    m_selectionToolMenu->addAction(findToolAction(CanvasView::Tool::Select));
-
-    m_openShapeToolMenu = m_toolMenu->addMenu(QString());
-    m_openShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Point));
-    m_openShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Line));
-    m_openShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Polyline));
-
-    m_closedShapeToolMenu = m_toolMenu->addMenu(QString());
-    m_closedShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Circle));
-    m_closedShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Ellipse));
-    m_closedShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Rectangle));
-    m_closedShapeToolMenu->addAction(findToolAction(CanvasView::Tool::Polygon));
-
-    // Tutorial 菜单标题在英文 / 中文下都保留 "Tutorial"（与 HTML 手册保持一致）
+    m_selectionToolMenu = new QMenu(this);
+    m_openShapeToolMenu = new QMenu(this);
+    m_closedShapeToolMenu = new QMenu(this);
     m_tutorialMenu = menuBar()->addMenu("Tutorial");
-    m_tutorialMenu->addAction(m_showTutorialAction);
-    m_tutorialMenu->addSeparator();
-    m_languageMenu = m_tutorialMenu->addMenu(QString());
-    m_languageMenu->addAction(m_englishAction);
-    m_languageMenu->addAction(m_simplifiedChineseAction);
+    m_languageMenu = new QMenu(this);
+
+    populateMenu({m_fileMenu,
+                  {actionItem(m_openAction), actionItem(m_saveAction), actionItem(m_saveAsAction), actionItem(m_exportAction),
+                   separatorItem(), actionItem(m_exitAction)}});
+    populateMenu({m_editMenu, {actionItem(m_copyAction), actionItem(m_pasteAction), actionItem(m_deleteAction), actionItem(m_clearAction)}});
+    populateMenu({m_themeMenu, {actionItem(m_themeSystemAction), actionItem(m_themeLightAction), actionItem(m_themeDarkAction)}});
+    populateMenu({m_selectionToolMenu, {actionItem(findToolAction(CanvasView::Tool::Select))}});
+    populateMenu({m_openShapeToolMenu,
+                  {actionItem(findToolAction(CanvasView::Tool::Point)), actionItem(findToolAction(CanvasView::Tool::Line)),
+                   actionItem(findToolAction(CanvasView::Tool::Polyline))}});
+    populateMenu({m_closedShapeToolMenu,
+                  {actionItem(findToolAction(CanvasView::Tool::Circle)), actionItem(findToolAction(CanvasView::Tool::Ellipse)),
+                   actionItem(findToolAction(CanvasView::Tool::Rectangle)), actionItem(findToolAction(CanvasView::Tool::Polygon))}});
+    populateMenu({m_viewMenu, {actionItem(m_togglePropertyDockAction), submenuItem(m_themeMenu)}});
+    populateMenu({m_languageMenu, {actionItem(m_englishAction), actionItem(m_simplifiedChineseAction)}});
+    populateMenu({m_tutorialMenu, {actionItem(m_showTutorialAction), separatorItem(), submenuItem(m_languageMenu)}});
 }
 
 void MainWindow::setupToolbar() {
     m_toolBar = addToolBar(QString());
     m_toolBar->setMovable(false);
 
-    // 顶层工具栏按类别分段：选择 -> 开放图形 -> 封闭图形 -> 编辑 -> 文件 -> 面板
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Select));
-    m_toolBar->addSeparator();
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Point));
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Line));
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Polyline));
-    m_toolBar->addSeparator();
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Circle));
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Ellipse));
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Rectangle));
-    m_toolBar->addAction(createToolAction(CanvasView::Tool::Polygon));
-    m_toolBar->addSeparator();
-    // 常用动作快捷入口
-    m_toolBar->addAction(m_deleteAction);
-    m_toolBar->addAction(m_copyAction);
-    m_toolBar->addAction(m_pasteAction);
-    m_toolBar->addAction(m_openAction);
-    m_toolBar->addAction(m_saveAction);
-    m_toolBar->addAction(m_clearAction);
-    m_toolBar->addSeparator();
-    m_toolBar->addAction(m_togglePropertyDockAction);
+    populateToolbar({m_toolBar,
+                     {actionItem(findToolAction(CanvasView::Tool::Select)), separatorItem(),
+                      actionItem(findToolAction(CanvasView::Tool::Point)), actionItem(findToolAction(CanvasView::Tool::Line)),
+                      actionItem(findToolAction(CanvasView::Tool::Polyline)), separatorItem(),
+                      actionItem(findToolAction(CanvasView::Tool::Circle)), actionItem(findToolAction(CanvasView::Tool::Ellipse)),
+                      actionItem(findToolAction(CanvasView::Tool::Rectangle)), actionItem(findToolAction(CanvasView::Tool::Polygon)),
+                      separatorItem(), actionItem(m_deleteAction), actionItem(m_copyAction), actionItem(m_pasteAction),
+                      actionItem(m_openAction), actionItem(m_saveAction), actionItem(m_clearAction), separatorItem(),
+                      actionItem(m_togglePropertyDockAction)}});
 
-    // 默认选中 Select 工具（ActionGroup 内的第一个）
     if (!m_toolActionGroup->actions().isEmpty()) {
         m_toolActionGroup->actions().first()->setChecked(true);
     }
 }
 
 void MainWindow::connectSignals() {
-    // File 菜单
-    connect(m_openAction, &QAction::triggered, this, &MainWindow::openDocument);
-    connect(m_saveAction, &QAction::triggered, this, [this]() { saveDocument(); });
-    connect(m_saveAsAction, &QAction::triggered, this, [this]() { saveDocumentAs(); });
-    connect(m_exportAction, &QAction::triggered, this, &MainWindow::exportImage);
-    connect(m_exitAction, &QAction::triggered, this, &QWidget::close);
-
-    // Tutorial 菜单
-    connect(m_showTutorialAction, &QAction::triggered, this, &MainWindow::showTutorial);
-
-    // Edit 菜单（直接桥到 CanvasView）
-    connect(m_deleteAction, &QAction::triggered, this, &MainWindow::deleteSelection);
-    connect(m_copyAction, &QAction::triggered, m_canvasView, &CanvasView::copySelectedItem);
-    connect(m_pasteAction, &QAction::triggered, m_canvasView, &CanvasView::pasteCopiedItem);
-    // Clear Canvas 还需要清空当前文件路径和更新窗口标题，所以在 MainWindow 内联处理
-    connect(m_clearAction, &QAction::triggered, this, [this]() {
-        m_canvasView->clearCanvas();
-        m_currentFilePath.clear();
-        updateWindowTitle();
-    });
-
-    // 画布 → 属性面板 / 状态栏
     connect(m_canvasView, &CanvasView::selectionStateChanged, this, [this](ShapeItem* item, int selectedCount) {
         if (selectedCount > 1) {
             m_propertyPanel->setMultipleSelection(selectedCount);
@@ -323,20 +282,8 @@ void MainWindow::connectSignals() {
 
     connect(m_canvasView, &CanvasView::statusMessageChanged, this,
             [this](const QString& message) { statusBar()->showMessage(message, 2500); });
-
-    // 属性面板 → 画布（回写修改）
     connect(m_propertyPanel, &PropertyPanel::shapeEdited, m_canvasView, &CanvasView::updateSelectedShape);
-
     connect(m_canvasView, &CanvasView::deleteSelectionRequested, this, &MainWindow::deleteSelection);
-
-    // 语言菜单
-    connect(m_englishAction, &QAction::triggered, this, [this]() { setLanguage(AppLanguage::English); });
-    connect(m_simplifiedChineseAction, &QAction::triggered, this,
-            [this]() { setLanguage(AppLanguage::SimplifiedChinese); });
-
-    connect(m_themeSystemAction, &QAction::triggered, this, [this]() { setThemeMode(ThemeMode::System); });
-    connect(m_themeLightAction, &QAction::triggered, this, [this]() { setThemeMode(ThemeMode::Light); });
-    connect(m_themeDarkAction, &QAction::triggered, this, [this]() { setThemeMode(ThemeMode::Dark); });
 
     connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
         if (m_themeMode == ThemeMode::System) {
@@ -346,54 +293,52 @@ void MainWindow::connectSignals() {
 }
 
 void MainWindow::retranslateUi() {
-    m_fileMenu->setTitle(textForLanguage(m_language, "File", "文件"));
-    m_editMenu->setTitle(textForLanguage(m_language, "Edit", "编辑"));
-    m_viewMenu->setTitle(textForLanguage(m_language, "View", "视图"));
-    m_toolMenu->setTitle(textForLanguage(m_language, "Tools", "工具"));
-    m_selectionToolMenu->setTitle(textForLanguage(m_language, "Selection", "选择工具"));
-    m_openShapeToolMenu->setTitle(textForLanguage(m_language, "Open Shapes", "开放图形"));
-    m_closedShapeToolMenu->setTitle(textForLanguage(m_language, "Closed Shapes", "封闭图形"));
-    m_themeMenu->setTitle(textForLanguage(m_language, "Theme", "主题"));
-    // Tutorial 标题保持原样（与 HTML 手册标题一致）
+    m_fileMenu->setTitle(i18n::tr(m_language, "menu.file", "File", "文件"));
+    m_editMenu->setTitle(i18n::tr(m_language, "menu.edit", "Edit", "编辑"));
+    m_viewMenu->setTitle(i18n::tr(m_language, "menu.view", "View", "视图"));
+    m_toolMenu->setTitle(i18n::tr(m_language, "menu.tools", "Tools", "工具"));
+    m_selectionToolMenu->setTitle(i18n::tr(m_language, "menu.selection_tools", "Selection", "选择工具"));
+    m_openShapeToolMenu->setTitle(i18n::tr(m_language, "menu.open_shapes", "Open Shapes", "开放图形"));
+    m_closedShapeToolMenu->setTitle(i18n::tr(m_language, "menu.closed_shapes", "Closed Shapes", "封闭图形"));
+    m_themeMenu->setTitle(i18n::tr(m_language, "menu.theme", "Theme", "主题"));
     m_tutorialMenu->setTitle("Tutorial");
-    m_languageMenu->setTitle(textForLanguage(m_language, "Language", "语言"));
+    m_languageMenu->setTitle(i18n::tr(m_language, "menu.language", "Language", "语言"));
 
-    m_openAction->setText(textForLanguage(m_language, "Open", "打开"));
-    m_saveAction->setText(textForLanguage(m_language, "Save", "保存"));
-    m_saveAsAction->setText(textForLanguage(m_language, "Save As", "另存为"));
-    m_exportAction->setText(textForLanguage(m_language, "Export Image", "导出图片"));
-    m_exitAction->setText(textForLanguage(m_language, "Exit", "退出"));
-    m_deleteAction->setText(textForLanguage(m_language, "Delete", "删除"));
-    m_copyAction->setText(textForLanguage(m_language, "Copy", "复制"));
-    m_pasteAction->setText(textForLanguage(m_language, "Paste", "粘贴"));
-    m_clearAction->setText(textForLanguage(m_language, "Clear Canvas", "清空画布"));
-    m_showTutorialAction->setText(textForLanguage(m_language, "Operation Manual", "操作手册"));
+    m_openAction->setText(i18n::tr(m_language, "action.open", "Open", "打开"));
+    m_saveAction->setText(i18n::tr(m_language, "action.save", "Save", "保存"));
+    m_saveAsAction->setText(i18n::tr(m_language, "action.save_as", "Save As", "另存为"));
+    m_exportAction->setText(i18n::tr(m_language, "action.export_image", "Export Image", "导出图片"));
+    m_exitAction->setText(i18n::tr(m_language, "action.exit", "Exit", "退出"));
+    m_deleteAction->setText(i18n::tr(m_language, "action.delete", "Delete", "删除"));
+    m_copyAction->setText(i18n::tr(m_language, "action.copy", "Copy", "复制"));
+    m_pasteAction->setText(i18n::tr(m_language, "action.paste", "Paste", "粘贴"));
+    m_clearAction->setText(i18n::tr(m_language, "action.clear", "Clear Canvas", "清空画布"));
+    m_showTutorialAction->setText(i18n::tr(m_language, "action.tutorial", "Operation Manual", "操作手册"));
     if (m_togglePropertyDockAction != nullptr) {
-        m_togglePropertyDockAction->setText(textForLanguage(m_language, "Properties Panel", "属性面板"));
+        m_togglePropertyDockAction->setText(i18n::tr(m_language, "action.toggle_panel", "Properties Panel", "属性面板"));
     }
-    m_themeSystemAction->setText(textForLanguage(m_language, "Auto Theme", "自动主题"));
-    m_themeLightAction->setText(textForLanguage(m_language, "Light", "浅色"));
-    m_themeDarkAction->setText(textForLanguage(m_language, "Dark", "深色"));
+    m_themeSystemAction->setText(i18n::tr(m_language, "action.theme_auto", "Auto Theme", "自动主题"));
+    m_themeLightAction->setText(i18n::tr(m_language, "action.theme_light", "Light", "浅色"));
+    m_themeDarkAction->setText(i18n::tr(m_language, "action.theme_dark", "Dark", "深色"));
     m_englishAction->setText("English");
     m_simplifiedChineseAction->setText(QString::fromUtf8("简体中文"));
 
-    // 工具按钮文本（按 QAction::data() 存取的 Tool 枚举值回查）
     for (QAction* action : m_toolActionGroup->actions()) {
-        const QVariant data = action->data();
-        if (data.isValid()) {
-            action->setText(toolLabel(static_cast<CanvasView::Tool>(data.toInt()), m_language));
+        if (action == nullptr || !action->data().isValid()) {
+            continue;
         }
+        action->setText(toolLabel(static_cast<CanvasView::Tool>(action->data().toInt()), m_language));
     }
 
-    m_propertyDock->setWindowTitle(textForLanguage(m_language, "Properties", "属性"));
-    m_toolBar->setWindowTitle(textForLanguage(m_language, "Tools", "工具"));
+    m_propertyDock->setWindowTitle(i18n::tr(m_language, "dock.properties", "Properties", "属性"));
+    m_toolBar->setWindowTitle(i18n::tr(m_language, "toolbar.tools", "Tools", "工具"));
     updateWindowTitle();
 }
 
 void MainWindow::updateWindowTitle() {
-    const QString fileName = m_currentFilePath.isEmpty() ? textForLanguage(m_language, "Untitled", "未命名")
+    const QString fileName = m_currentFilePath.isEmpty() ? i18n::tr(m_language, "title.untitled", "Untitled", "未命名")
                                                          : QFileInfo(m_currentFilePath).fileName();
-    setWindowTitle(QString("%1 - %2").arg(fileName, textForLanguage(m_language, "SVG Editor", "SVG 编辑器")));
+    setWindowTitle(QString("%1 - %2").arg(fileName, i18n::tr(m_language, "title.app", "SVG Editor", "SVG 编辑器")));
 }
 
 void MainWindow::showTutorial() {
@@ -409,8 +354,8 @@ void MainWindow::deleteSelection() {
 
     if (selectedCount > 1) {
         const QMessageBox::StandardButton reply = QMessageBox::question(
-            this, textForLanguage(m_language, "Delete Multiple Shapes", "删除多个图形"),
-            textForLanguage(m_language, "Delete %1 selected shapes?", "确定删除已选中的 %1 个图形吗？")
+            this, i18n::tr(m_language, "dialog.delete_multi_title", "Delete Multiple Shapes", "删除多个图形"),
+            i18n::tr(m_language, "dialog.delete_multi_msg", "Delete %1 selected shapes?", "确定删除已选中的 %1 个图形吗？")
                 .arg(selectedCount),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) {
@@ -424,12 +369,9 @@ void MainWindow::deleteSelection() {
 QAction* MainWindow::createToolAction(CanvasView::Tool tool) {
     QAction* action = new QAction(this);
     action->setCheckable(true);
-    // 把 Tool 枚举值存到 action->data()，供 retranslateUi 时回查
     action->setData(static_cast<int>(tool));
     m_toolActionGroup->addAction(action);
-
     connect(action, &QAction::triggered, this, [this, tool]() { m_canvasView->setTool(tool); });
-
     return action;
 }
 
@@ -439,50 +381,44 @@ QAction* MainWindow::findToolAction(CanvasView::Tool tool) const {
             return action;
         }
     }
-
     return nullptr;
 }
 
 bool MainWindow::saveToPath(const QString& filePath) {
     QString errorMessage;
     if (!FileManager::saveToFile(filePath, m_canvasView->documentData(), &errorMessage)) {
-        QMessageBox::warning(this, textForLanguage(m_language, "Save Failed", "保存失败"), errorMessage);
+        QMessageBox::warning(this, i18n::tr(m_language, "dialog.save_failed", "Save Failed", "保存失败"), errorMessage);
         return false;
     }
 
     m_currentFilePath = filePath;
     updateWindowTitle();
-    statusBar()->showMessage(textForLanguage(m_language, "File saved.", "文件已保存。"), 2500);
+    statusBar()->showMessage(i18n::tr(m_language, "status.file_saved", "File saved.", "文件已保存。"), 2500);
     return true;
 }
 
 bool MainWindow::saveDocument() {
     if (m_currentFilePath.isEmpty()) {
-        // 还没保存过 → 走另存为
         return saveDocumentAs();
     }
-
     return saveToPath(m_currentFilePath);
 }
 
 bool MainWindow::saveDocumentAs() {
     const QString filePath = QFileDialog::getSaveFileName(
-        this, textForLanguage(m_language, "Save Vector Document", "保存矢量图文件"),
+        this, i18n::tr(m_language, "dialog.save_doc", "Save Vector Document", "保存矢量图文件"),
         m_currentFilePath.isEmpty() ? "drawing.vgjson" : m_currentFilePath,
-        textForLanguage(m_language, "Vector JSON (*.vgjson *.json)", "矢量 JSON 文件 (*.vgjson *.json)"));
-
+        i18n::tr(m_language, "filter.vgjson", "Vector JSON (*.vgjson *.json)", "矢量 JSON 文件 (*.vgjson *.json)"));
     if (filePath.isEmpty()) {
-        // 用户取消
         return false;
     }
-
     return saveToPath(filePath);
 }
 
 void MainWindow::openDocument() {
     const QString filePath = QFileDialog::getOpenFileName(
-        this, textForLanguage(m_language, "Open Vector Document", "打开矢量图文件"), QString(),
-        textForLanguage(m_language, "Vector JSON (*.vgjson *.json)", "矢量 JSON 文件 (*.vgjson *.json)"));
+        this, i18n::tr(m_language, "dialog.open_doc", "Open Vector Document", "打开矢量图文件"), QString(),
+        i18n::tr(m_language, "filter.vgjson", "Vector JSON (*.vgjson *.json)", "矢量 JSON 文件 (*.vgjson *.json)"));
     if (filePath.isEmpty()) {
         return;
     }
@@ -490,29 +426,29 @@ void MainWindow::openDocument() {
     QString errorMessage;
     const std::optional<DocumentData> document = FileManager::loadFromFile(filePath, &errorMessage);
     if (!document.has_value()) {
-        QMessageBox::warning(this, textForLanguage(m_language, "Open Failed", "打开失败"), errorMessage);
+        QMessageBox::warning(this, i18n::tr(m_language, "dialog.open_failed", "Open Failed", "打开失败"), errorMessage);
         return;
     }
 
     m_canvasView->loadDocument(*document);
     m_currentFilePath = filePath;
     updateWindowTitle();
-    statusBar()->showMessage(textForLanguage(m_language, "File loaded.", "文件已加载。"), 2500);
+    statusBar()->showMessage(i18n::tr(m_language, "status.file_loaded", "File loaded.", "文件已加载。"), 2500);
 }
 
 void MainWindow::exportImage() {
     const QString filePath =
-        QFileDialog::getSaveFileName(this, textForLanguage(m_language, "Export Image", "导出图片"), "canvas.png",
-                                     textForLanguage(m_language, "PNG Image (*.png)", "PNG 图片 (*.png)"));
+        QFileDialog::getSaveFileName(this, i18n::tr(m_language, "dialog.export_image", "Export Image", "导出图片"), "canvas.png",
+                                     i18n::tr(m_language, "filter.png", "PNG Image (*.png)", "PNG 图片 (*.png)"));
     if (filePath.isEmpty()) {
         return;
     }
 
     QString errorMessage;
     if (!m_canvasView->exportImage(filePath, &errorMessage)) {
-        QMessageBox::warning(this, textForLanguage(m_language, "Export Failed", "导出失败"), errorMessage);
+        QMessageBox::warning(this, i18n::tr(m_language, "dialog.export_failed", "Export Failed", "导出失败"), errorMessage);
         return;
     }
 
-    statusBar()->showMessage(textForLanguage(m_language, "Image exported.", "图片已导出。"), 2500);
+    statusBar()->showMessage(i18n::tr(m_language, "status.image_exported", "Image exported.", "图片已导出。"), 2500);
 }

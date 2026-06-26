@@ -21,13 +21,12 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <array>
+
+#include "I18n.h"
+#include "PropertyPanelGeometryFields.h"
 
 namespace {
-
-/// @brief 二选一返回字符串（与 CanvasView/MainWindow 中的同名工具一致）。
-QString textForLanguage(AppLanguage language, const QString& english, const QString& chinese) {
-    return language == AppLanguage::SimplifiedChinese ? chinese : english;
-}
 
 /// @brief 在 QFormLayout 中按 field 找到其左侧的 QLabel 并设置文本。
 void setFormLabelText(QFormLayout* layout, QWidget* field, const QString& text) {
@@ -177,7 +176,7 @@ void PropertyPanel::setupUi() {
         }
 
         const QColor color = QColorDialog::getColor(m_currentData.style.strokeColor, this,
-                                                    textForLanguage(m_language, "Select Stroke Color", "选择描边颜色"));
+                                                    i18n::tr(m_language, "dialog.stroke_color", "Select Stroke Color", "选择描边颜色"));
         if (!color.isValid()) {
             return;
         }
@@ -243,7 +242,7 @@ void PropertyPanel::setupUi() {
         }
 
         const QColor color = QColorDialog::getColor(m_currentData.style.fillColor, this,
-                                                    textForLanguage(m_language, "Select Fill Color", "选择填充颜色"));
+                                                    i18n::tr(m_language, "dialog.fill_color", "Select Fill Color", "选择填充颜色"));
         if (!color.isValid()) {
             return;
         }
@@ -273,47 +272,52 @@ void PropertyPanel::retranslateUi() {
     rebuildLineStyleCombo();
     updateSelectionTexts();
 
-    m_strokeEnabledCheck->setText(textForLanguage(m_language, "Enable Stroke", "启用描边"));
-    m_strokeColorButton->setText(textForLanguage(m_language, "Stroke Color", "描边颜色"));
-    m_fillColorButton->setText(textForLanguage(m_language, "Fill Color", "填充颜色"));
-    m_fillEnabledCheck->setText(textForLanguage(m_language, "Enable Fill", "启用填充"));
+    m_strokeEnabledCheck->setText(i18n::tr(m_language, "panel.stroke_enabled", "Enable Stroke", "启用描边"));
+    m_strokeColorButton->setText(i18n::tr(m_language, "panel.stroke_color", "Stroke Color", "描边颜色"));
+    m_fillColorButton->setText(i18n::tr(m_language, "panel.fill_color", "Fill Color", "填充颜色"));
+    m_fillEnabledCheck->setText(i18n::tr(m_language, "panel.fill_enabled", "Enable Fill", "启用填充"));
 
     // 表单左侧标签需要单独刷新
     if (m_formLayout != nullptr) {
-        setFormLabelText(m_formLayout, m_strokeEnabledCheck, textForLanguage(m_language, "Stroke Enabled", "描边开关"));
-        setFormLabelText(m_formLayout, m_strokeColorButton, textForLanguage(m_language, "Stroke", "描边"));
-        setFormLabelText(m_formLayout, m_lineWidthSpin, textForLanguage(m_language, "Line Width", "线宽"));
-        setFormLabelText(m_formLayout, m_lineStyleCombo, textForLanguage(m_language, "Line Style", "线型"));
-        setFormLabelText(m_formLayout, m_fillEnabledCheck, textForLanguage(m_language, "Fill", "填充"));
-        setFormLabelText(m_formLayout, m_fillColorButton, textForLanguage(m_language, "Fill Color", "填充颜色"));
+        setFormLabelText(m_formLayout, m_strokeEnabledCheck, i18n::tr(m_language, "panel.stroke_enabled_label", "Stroke Enabled", "描边开关"));
+        setFormLabelText(m_formLayout, m_strokeColorButton, i18n::tr(m_language, "panel.stroke_label", "Stroke", "描边"));
+        setFormLabelText(m_formLayout, m_lineWidthSpin, i18n::tr(m_language, "panel.line_width", "Line Width", "线宽"));
+        setFormLabelText(m_formLayout, m_lineStyleCombo, i18n::tr(m_language, "panel.line_style", "Line Style", "线型"));
+        setFormLabelText(m_formLayout, m_fillEnabledCheck, i18n::tr(m_language, "panel.fill_label", "Fill", "填充"));
+        setFormLabelText(m_formLayout, m_fillColorButton, i18n::tr(m_language, "panel.fill_color_label", "Fill Color", "填充颜色"));
     }
 }
 
 void PropertyPanel::updateSelectionTexts() {
     if (m_selectedCount > 1) {
-        m_titleLabel->setText(textForLanguage(m_language, "Multiple selection", "多选图形"));
+        m_titleLabel->setText(i18n::tr(m_language, "panel.title_multi_count", "%1 shapes selected", "已选中 %1 个图形")
+                                  .arg(m_selectedCount));
         m_hintLabel->setText(
-            textForLanguage(m_language, "Multiple selected shapes can be moved, scaled, rotated, or deleted together.",
-                            "当前已选中多个图形，可统一移动、缩放、旋转或删除。"));
+            i18n::tr(m_language, "panel.hint_multi",
+                     "Multiple selection supports transform and delete in this version.",
+                     "当前多选仅支持统一变换与删除。"));
         return;
     }
 
     if (!m_hasSelection) {
-        m_titleLabel->setText(textForLanguage(m_language, "No selection", "未选中图形"));
-        m_hintLabel->setText(textForLanguage(m_language, "Select a shape to edit geometry and style.",
-                                             "请选择一个图形后再编辑几何参数和样式。"));
+        m_titleLabel->setText(i18n::tr(m_language, "panel.title_none", "No selection", "未选中图形"));
+        m_hintLabel->setText(i18n::tr(m_language, "panel.hint_none",
+                                      "Select a shape to edit geometry and style.",
+                                      "请选择一个图形后再编辑几何参数和样式。"));
         return;
     }
 
     m_titleLabel->setText(shapeDisplayName(m_currentData.type, m_language));
     if (geometryEditingEnabled()) {
         m_hintLabel->setText(
-            textForLanguage(m_language, "Geometry updates are applied immediately.", "修改参数后会立即更新画布。"));
+            i18n::tr(m_language, "panel.hint_geometry",
+                     "Geometry updates are applied immediately.", "修改参数后会立即更新画布。"));
         return;
     }
 
-    m_hintLabel->setText(textForLanguage(m_language, "This transformed shape only supports style edits.",
-                                         "当前图形已发生缩放或旋转，仅支持样式编辑。"));
+    m_hintLabel->setText(i18n::tr(m_language, "panel.hint_transformed",
+                                  "This transformed shape only supports style edits.",
+                                  "当前图形已发生缩放或旋转，仅支持样式编辑。"));
 }
 
 void PropertyPanel::rebuildLineStyleCombo() {
@@ -336,79 +340,66 @@ void PropertyPanel::rebuildLineStyleCombo() {
 }
 
 void PropertyPanel::updateGeometryControls() {
-    // 先全部隐藏，再按 type 决定显示哪些字段
     for (int index = 0; index < 6; ++index) {
         m_geometryLabels[index]->hide();
         m_geometryEdits[index]->hide();
+        m_geometryEdits[index]->setRange(-100000.0, 100000.0);
     }
 
     if (!geometryEditingEnabled()) {
         return;
     }
 
-    // 局部辅助：显示一个字段并设置当前值
-    auto showField = [this](int index, const QString& label, double value) {
-        m_geometryLabels[index]->setText(label);
-        m_geometryEdits[index]->setValue(value);
-        m_geometryLabels[index]->show();
-        m_geometryEdits[index]->show();
-    };
-
-    // 局部辅助：单独设置某个字段的取值范围（默认 -100000~100000）
-    auto setFieldRange = [this](int index, double minimum, double maximum) {
-        m_geometryEdits[index]->setRange(minimum, maximum);
-    };
-
+    std::array<double, 6> values = {};
     switch (m_currentData.type) {
     case ShapeType::Point:
-        // Point：单点 → x/y
         if (!m_currentData.points.isEmpty()) {
-            showField(0, "x", m_currentData.points.first().x());
-            showField(1, "y", m_currentData.points.first().y());
+            values[0] = m_currentData.points.first().x();
+            values[1] = m_currentData.points.first().y();
         }
         break;
     case ShapeType::Line:
-        // Line：起终点 → x1/y1/x2/y2
         if (m_currentData.points.size() >= 2) {
-            showField(0, "x1", m_currentData.points.at(0).x());
-            showField(1, "y1", m_currentData.points.at(0).y());
-            showField(2, "x2", m_currentData.points.at(1).x());
-            showField(3, "y2", m_currentData.points.at(1).y());
+            values[0] = m_currentData.points.at(0).x();
+            values[1] = m_currentData.points.at(0).y();
+            values[2] = m_currentData.points.at(1).x();
+            values[3] = m_currentData.points.at(1).y();
         }
         break;
     case ShapeType::Polyline:
     case ShapeType::Polygon: {
-        // Polyline/Polygon 当前不支持逐顶点编辑，仅允许整体平移 → 只显示 bbox 的 x/y
         const QRectF bounds = pointsBoundingRect(m_currentData.points);
-        showField(0, "x", bounds.x());
-        showField(1, "y", bounds.y());
+        values[0] = bounds.x();
+        values[1] = bounds.y();
         break;
     }
     case ShapeType::Circle:
-        // Circle：cx/cy/r，r 范围 [0, 100000]
-        showField(0, "cx", m_currentData.rect.center().x());
-        showField(1, "cy", m_currentData.rect.center().y());
-        setFieldRange(2, 0.0, 100000.0);
-        showField(2, "r", m_currentData.rect.width() / 2.0);
+        values[0] = m_currentData.rect.center().x();
+        values[1] = m_currentData.rect.center().y();
+        values[2] = m_currentData.rect.width() / 2.0;
         break;
     case ShapeType::Ellipse:
-        // Ellipse：cx/cy/rx/ry，半轴非负
-        showField(0, "cx", m_currentData.rect.center().x());
-        showField(1, "cy", m_currentData.rect.center().y());
-        setFieldRange(2, 0.0, 100000.0);
-        setFieldRange(3, 0.0, 100000.0);
-        showField(2, "rx", m_currentData.rect.width() / 2.0);
-        showField(3, "ry", m_currentData.rect.height() / 2.0);
+        values[0] = m_currentData.rect.center().x();
+        values[1] = m_currentData.rect.center().y();
+        values[2] = m_currentData.rect.width() / 2.0;
+        values[3] = m_currentData.rect.height() / 2.0;
         break;
     case ShapeType::Rectangle:
-        // Rectangle：x/y/width/height，宽高非负
-        showField(0, "x", m_currentData.rect.x());
-        showField(1, "y", m_currentData.rect.y());
-        setFieldRange(2, 0.0, 100000.0);
-        setFieldRange(3, 0.0, 100000.0);
-        showField(2, "width", m_currentData.rect.width());
-        showField(3, "height", m_currentData.rect.height());
+        values[0] = m_currentData.rect.x();
+        values[1] = m_currentData.rect.y();
+        values[2] = m_currentData.rect.width();
+        values[3] = m_currentData.rect.height();
         break;
+    }
+
+    const GeometryFieldSet& fieldSet = geometryFieldsFor(m_currentData.type);
+    for (std::size_t index = 0; index < fieldSet.fields.size() && index < 6; ++index) {
+        const GeometryField& field = fieldSet.fields[index];
+        m_geometryLabels[index]->setText(QString::fromLatin1(field.label));
+        m_geometryEdits[index]->setRange(field.minimum, field.maximum);
+        m_geometryEdits[index]->setValue(values[index]);
+        m_geometryLabels[index]->show();
+        m_geometryEdits[index]->show();
     }
 }
 
@@ -418,48 +409,11 @@ void PropertyPanel::emitEditedShape() {
     }
 
     ShapeData data = m_currentData;
-    switch (data.type) {
-    case ShapeType::Point:
-        if (!data.points.isEmpty()) {
-            data.points[0] = QPointF(m_geometryEdits[0]->value(), m_geometryEdits[1]->value());
-        }
-        break;
-    case ShapeType::Line:
-        if (data.points.size() >= 2) {
-            data.points[0] = QPointF(m_geometryEdits[0]->value(), m_geometryEdits[1]->value());
-            data.points[1] = QPointF(m_geometryEdits[2]->value(), m_geometryEdits[3]->value());
-        }
-        break;
-    case ShapeType::Polyline:
-    case ShapeType::Polygon: {
-        // 把 bbox 起点平移到新位置（保持宽高不变）
-        const QRectF currentBounds = pointsBoundingRect(data.points);
-        const QPointF delta(m_geometryEdits[0]->value() - currentBounds.x(),
-                            m_geometryEdits[1]->value() - currentBounds.y());
-        translateShapeData(data, delta);
-        break;
+    std::array<double, 6> values = {};
+    for (int index = 0; index < 6; ++index) {
+        values[index] = m_geometryEdits[index]->value();
     }
-    case ShapeType::Circle: {
-        // 用 center + r 重建正方形外接框
-        const qreal radius = m_geometryEdits[2]->value();
-        const QPointF center(m_geometryEdits[0]->value(), m_geometryEdits[1]->value());
-        data.rect = QRectF(center.x() - radius, center.y() - radius, radius * 2.0, radius * 2.0);
-        break;
-    }
-    case ShapeType::Ellipse: {
-        // 用 center + 半轴重建
-        const qreal rx = m_geometryEdits[2]->value();
-        const qreal ry = m_geometryEdits[3]->value();
-        const QPointF center(m_geometryEdits[0]->value(), m_geometryEdits[1]->value());
-        data.rect = QRectF(center.x() - rx, center.y() - ry, rx * 2.0, ry * 2.0);
-        break;
-    }
-    case ShapeType::Rectangle:
-        // 直接 4 个标量
-        data.rect = QRectF(m_geometryEdits[0]->value(), m_geometryEdits[1]->value(), m_geometryEdits[2]->value(),
-                           m_geometryEdits[3]->value());
-        break;
-    }
+    geometryFieldsFor(data.type).applyTo(data, values);
 
     m_currentData = normalizedShapeData(data);
     emit shapeEdited(m_currentData);
