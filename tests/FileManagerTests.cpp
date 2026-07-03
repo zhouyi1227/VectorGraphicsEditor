@@ -15,6 +15,8 @@ class FileManagerTests : public QObject {
     void saveAndLoadDocument();
     void rejectOldOrIncompleteDocument();
     void rejectDuplicateShapeId();
+    void rejectUnsupportedTransformOnLoad();
+    void rejectUnsupportedTransformOnSave();
 };
 
 void FileManagerTests::saveAndLoadDocument() {
@@ -31,7 +33,7 @@ void FileManagerTests::saveAndLoadDocument() {
     rectangle.style.strokeEnabled = false;
     rectangle.style.fillEnabled = true;
     rectangle.style.fillColor = QColor("#ff0099cc");
-    rectangle.transform.translate(12.0, 18.0);
+    rectangle.transform = QTransform(2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 12.0, 18.0, 1.0);
     rectangle.zValue = 3.0;
     document.shapes.append(rectangle);
 
@@ -121,6 +123,53 @@ void FileManagerTests::rejectDuplicateShapeId() {
     QVERIFY(!FileManager::loadFromFile(filePath, &errorMessage).has_value());
     QVERIFY2(errorMessage.contains("Duplicate shape id"), qPrintable(errorMessage));
     QVERIFY2(errorMessage.contains("dup-1"), qPrintable(errorMessage));
+}
+
+void FileManagerTests::rejectUnsupportedTransformOnLoad() {
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+
+    ShapeData rotated;
+    rotated.id = "rotated-1";
+    rotated.type = ShapeType::Rectangle;
+    rotated.rect = QRectF(0.0, 0.0, 40.0, 20.0);
+    rotated.transform.rotate(30.0);
+
+    const QString filePath = tempDir.filePath("rotated.vgjson");
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    file.write(QJsonDocument(QJsonObject{
+                                 {"version", 2},
+                                 {"canvas", QJsonObject{{"width", 800.0}, {"height", 600.0}}},
+                                 {"shapes", QJsonArray{shapeDataToJson(rotated)}},
+                             })
+                   .toJson(QJsonDocument::Indented));
+    file.close();
+
+    QString errorMessage;
+    QVERIFY(!FileManager::loadFromFile(filePath, &errorMessage).has_value());
+    QVERIFY2(errorMessage.contains("Unsupported transform at shape index 0"), qPrintable(errorMessage));
+    QVERIFY2(errorMessage.contains("Rotation is no longer supported"), qPrintable(errorMessage));
+}
+
+void FileManagerTests::rejectUnsupportedTransformOnSave() {
+    DocumentData document;
+    document.canvasSize = QSizeF(800.0, 600.0);
+
+    ShapeData rotated;
+    rotated.id = "rotated-1";
+    rotated.type = ShapeType::Rectangle;
+    rotated.rect = QRectF(0.0, 0.0, 40.0, 20.0);
+    rotated.transform.rotate(30.0);
+    document.shapes.append(rotated);
+
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+
+    QString errorMessage;
+    QVERIFY(!FileManager::saveToFile(tempDir.filePath("rotated-save.vgjson"), document, &errorMessage));
+    QVERIFY2(errorMessage.contains("Unsupported transform at shape index 0"), qPrintable(errorMessage));
+    QVERIFY2(errorMessage.contains("Rotation is no longer supported"), qPrintable(errorMessage));
 }
 
 QTEST_APPLESS_MAIN(FileManagerTests)

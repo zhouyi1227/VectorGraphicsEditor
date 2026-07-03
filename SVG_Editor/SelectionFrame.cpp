@@ -3,9 +3,8 @@
 // ---------------------------------------------------------------------
 // @brief   SelectionFrame.h 中声明方法的实现
 // @details 这里不依赖 Widgets，仅做几何运算：
-//          - `topNormal()` 固定返回顶边外法线（矩形默认朝上）
 //          - `localToSceneTransform()` 把局部单位正方形映射到当前 frame
-//          - `mapped()` 用仿射变换整体更新 frame，供旋转/缩放/平移会话复用
+//          - `mapped()` 用仿射变换整体更新 frame，供缩放/平移会话复用
 // @layer   core
 // =====================================================================
 
@@ -84,10 +83,6 @@ QPointF SelectionFrame::bottomLeft() const { return topLeft + yAxis; }
 QPointF SelectionFrame::bottomRight() const { return topLeft + xAxis + yAxis; }
 
 QPointF SelectionFrame::center() const { return topLeft + 0.5 * (xAxis + yAxis); }
-
-QPointF SelectionFrame::topCenter() const { return topLeft + 0.5 * xAxis; }
-
-QPointF SelectionFrame::topNormal() const { return normalizedVector(QPointF(xAxis.y(), -xAxis.x())); }
 
 QPolygonF SelectionFrame::polygon() const { return QPolygonF({topLeft, topRight(), bottomRight(), bottomLeft()}); }
 

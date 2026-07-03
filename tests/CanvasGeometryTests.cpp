@@ -13,6 +13,8 @@ bool pointsNear(const QPointF& lhs, const QPointF& rhs) {
 }
 
 qreal dotProduct(const QPointF& lhs, const QPointF& rhs) { return lhs.x() * rhs.x() + lhs.y() * rhs.y(); }
+
+qreal vectorLength(const QPointF& vector) { return std::hypot(vector.x(), vector.y()); }
 } // namespace
 
 class CanvasGeometryTests : public QObject {
@@ -21,14 +23,14 @@ class CanvasGeometryTests : public QObject {
   private slots:
     void circleRectFromDiagonalDrag();
     void circleRectFromAntiDiagonalDrag();
-    void snapAngleQuantizesTo15Degrees();
     void orthonormalizedFrameKeepsCenterAndRemovesShear();
     void scaleTransformDoublesFrameSizeFromTopLeft();
-    void scaledRotatedFrameKeepsAxesPerpendicular();
+    void draggedHandleFollowsMouseOnAxisAlignedFrame();
+    void draggedHandleFollowsMouseOnOrientedFrame();
+    void scaledOrientedFrameKeepsAxesPerpendicular();
     void scaleClampPreventsFlipAcrossPivot();
+    void keepAspectRatioPreservesPivotAndUniformScale();
     void transformBetweenFramesMapsCornersExactly();
-    void rotationTransformAroundCenterIsCorrect();
-    void rotationTransformWithShiftSnapsTo15Degrees();
 };
 
 void CanvasGeometryTests::circleRectFromDiagonalDrag() {
@@ -49,16 +51,6 @@ void CanvasGeometryTests::circleRectFromAntiDiagonalDrag() {
     QCOMPARE(rect.height(), 60.0);
 }
 
-void CanvasGeometryTests::snapAngleQuantizesTo15Degrees() {
-    QCOMPARE(canvas_geometry::snapAngleDegrees(0.0), 0.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(7.0), 0.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(8.0), 15.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(22.0), 15.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(23.0), 30.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(-7.0), 0.0);
-    QCOMPARE(canvas_geometry::snapAngleDegrees(-8.0), -15.0);
-}
-
 void CanvasGeometryTests::orthonormalizedFrameKeepsCenterAndRemovesShear() {
     SelectionFrame frame;
     frame.topLeft = QPointF(0.0, 0.0);
@@ -77,8 +69,8 @@ void CanvasGeometryTests::scaleTransformDoublesFrameSizeFromTopLeft() {
 
     // 从 BottomRight 拖到 (200,100) = 局部 (2,2)，pivot=TopLeft=(0,0)
     // scaleX = 2/1 = 2, scaleY = 2/1 = 2 → frame 在两个轴都翻倍
-    const QTransform transform = canvas_geometry::scaleTransformFromHandle(CanvasHandle::BottomRight, frame,
-                                                                           QPointF(200.0, 100.0), QPointF(), false);
+    const QTransform transform =
+        canvas_geometry::scaleTransformFromHandle(CanvasHandle::BottomRight, frame, QPointF(200.0, 100.0), false);
 
     const QPointF tl = transform.map(QPointF(0.0, 0.0));
     const QPointF br = transform.map(QPointF(100.0, 50.0));
@@ -86,22 +78,48 @@ void CanvasGeometryTests::scaleTransformDoublesFrameSizeFromTopLeft() {
     QVERIFY(pointsNear(br, QPointF(200.0, 100.0)));
 }
 
-void CanvasGeometryTests::scaledRotatedFrameKeepsAxesPerpendicular() {
-    const SelectionFrame frame = SelectionFrame::fromRect(QRectF(-50.0, -50.0, 100.0, 100.0));
-    const QPointF center = frame.center();
-    const SelectionFrame rotated = canvas_geometry::rotatedFrameFromPoints(
-        frame, QPointF(center.x() + 10.0, center.y()), QPointF(center.x(), center.y() - 10.0), false);
-    const SelectionFrame scaled = canvas_geometry::scaledFrameFromHandle(
-        CanvasHandle::BottomRight, rotated, rotated.bottomRight() + QPointF(60.0, 20.0), QPointF(), false);
+void CanvasGeometryTests::draggedHandleFollowsMouseOnAxisAlignedFrame() {
+    const SelectionFrame frame = SelectionFrame::fromRect(QRectF(10.0, 20.0, 100.0, 60.0));
+    const QPointF targetHandlePoint(35.0, 55.0);
 
-    QVERIFY(rotated.isOrthogonal());
+    const SelectionFrame scaled =
+        canvas_geometry::scaledFrameFromHandle(CanvasHandle::TopLeft, frame, targetHandlePoint, false);
+
+    QVERIFY(pointsNear(scaled.topLeft, targetHandlePoint));
+    QVERIFY(pointsNear(scaled.bottomRight(), frame.bottomRight()));
+}
+
+void CanvasGeometryTests::draggedHandleFollowsMouseOnOrientedFrame() {
+    SelectionFrame frame;
+    frame.topLeft = QPointF(20.0, 30.0);
+    frame.xAxis = QPointF(90.0, 30.0);
+    frame.yAxis = QPointF(-30.0, 90.0);
+    const QPointF targetHandlePoint = frame.topRight() + QPointF(25.0, -15.0);
+
+    const SelectionFrame scaled =
+        canvas_geometry::scaledFrameFromHandle(CanvasHandle::TopRight, frame, targetHandlePoint, false);
+
+    QVERIFY(frame.isOrthogonal());
+    QVERIFY(pointsNear(scaled.topRight(), targetHandlePoint));
+    QVERIFY(pointsNear(scaled.bottomLeft(), frame.bottomLeft()));
+}
+
+void CanvasGeometryTests::scaledOrientedFrameKeepsAxesPerpendicular() {
+    SelectionFrame frame;
+    frame.topLeft = QPointF(-50.0, -50.0);
+    frame.xAxis = QPointF(80.0, 20.0);
+    frame.yAxis = QPointF(-20.0, 80.0);
+    const SelectionFrame scaled = canvas_geometry::scaledFrameFromHandle(
+        CanvasHandle::BottomRight, frame, frame.bottomRight() + QPointF(60.0, 20.0), false);
+
+    QVERIFY(frame.isOrthogonal());
     QVERIFY(scaled.isOrthogonal());
 }
 
 void CanvasGeometryTests::scaleClampPreventsFlipAcrossPivot() {
     const SelectionFrame frame = SelectionFrame::fromRect(QRectF(0.0, 0.0, 100.0, 100.0));
-    const SelectionFrame scaled = canvas_geometry::scaledFrameFromHandle(CanvasHandle::BottomRight, frame,
-                                                                         QPointF(-20.0, -10.0), QPointF(), false);
+    const SelectionFrame scaled =
+        canvas_geometry::scaledFrameFromHandle(CanvasHandle::BottomRight, frame, QPointF(-20.0, -10.0), false);
 
     QVERIFY(scaled.isOrthogonal());
     QVERIFY(std::hypot(scaled.xAxis.x(), scaled.xAxis.y()) > 0.0);
@@ -109,11 +127,26 @@ void CanvasGeometryTests::scaleClampPreventsFlipAcrossPivot() {
     QVERIFY(std::abs(dotProduct(scaled.xAxis, scaled.yAxis)) < kTolerance);
 }
 
+void CanvasGeometryTests::keepAspectRatioPreservesPivotAndUniformScale() {
+    const SelectionFrame frame = SelectionFrame::fromRect(QRectF(0.0, 0.0, 100.0, 50.0));
+    const QPointF targetHandlePoint(220.0, 90.0);
+
+    const SelectionFrame scaled =
+        canvas_geometry::scaledFrameFromHandle(CanvasHandle::BottomRight, frame, targetHandlePoint, true);
+    const qreal scaleAlongX = vectorLength(scaled.xAxis) / vectorLength(frame.xAxis);
+    const qreal scaleAlongY = vectorLength(scaled.yAxis) / vectorLength(frame.yAxis);
+
+    QVERIFY(pointsNear(scaled.topLeft, frame.topLeft));
+    QVERIFY(scaled.isOrthogonal());
+    QVERIFY(std::abs(scaleAlongX - scaleAlongY) < kTolerance);
+}
+
 void CanvasGeometryTests::transformBetweenFramesMapsCornersExactly() {
     const SelectionFrame source = SelectionFrame::fromRect(QRectF(0.0, 0.0, 100.0, 80.0));
-    SelectionFrame target = SelectionFrame::fromRect(QRectF(0.0, 0.0, 160.0, 120.0));
-    target = canvas_geometry::rotatedFrameFromPoints(target, target.center() + QPointF(10.0, 0.0),
-                                                     target.center() + QPointF(0.0, -10.0), false);
+    SelectionFrame target;
+    target.topLeft = QPointF(30.0, 40.0);
+    target.xAxis = QPointF(0.0, 160.0);
+    target.yAxis = QPointF(-120.0, 0.0);
 
     const QTransform delta = canvas_geometry::transformBetweenFrames(source, target);
     QVERIFY2(pointsNear(delta.map(source.topLeft), target.topLeft),
@@ -140,33 +173,6 @@ void CanvasGeometryTests::transformBetweenFramesMapsCornersExactly() {
                             .arg(delta.map(source.bottomRight()).y())
                             .arg(target.bottomRight().x())
                             .arg(target.bottomRight().y())));
-}
-
-void CanvasGeometryTests::rotationTransformAroundCenterIsCorrect() {
-    const SelectionFrame frame = SelectionFrame::fromRect(QRectF(-50.0, -25.0, 100.0, 50.0));
-    const QPointF center = frame.center();
-
-    // start 在 center 正右方，current 在 center 正上方 → 累计旋转 -90°
-    const QTransform transform = canvas_geometry::rotationTransformFromPoints(
-        frame, QPointF(center.x() + 10.0, center.y()), QPointF(center.x(), center.y() - 10.0), false);
-
-    // frame 的 right-center 点 (-50+100, -25+25) = (50, 0)，旋转 -90° 应到 (0, -50)
-    const QPointF rotated = transform.map(QPointF(50.0, 0.0));
-    QVERIFY2(pointsNear(rotated, QPointF(0.0, -50.0)),
-             qPrintable(QString("actual rotated point=(%1,%2)").arg(rotated.x()).arg(rotated.y())));
-}
-
-void CanvasGeometryTests::rotationTransformWithShiftSnapsTo15Degrees() {
-    const SelectionFrame frame = SelectionFrame::fromRect(QRectF(0.0, 0.0, 100.0, 50.0));
-    const QPointF center = frame.center();
-
-    // 真实累计角度约 7°（不到 15° 阈值）；Shift 打开后应被吸附到 0°
-    const QTransform transform = canvas_geometry::rotationTransformFromPoints(
-        frame, QPointF(center.x() + 10.0, center.y()), QPointF(center.x() + 10.0, center.y() - 1.23), true);
-
-    // 0° 旋转 = 恒等变换
-    const QPointF sample = QPointF(20.0, 10.0);
-    QVERIFY(pointsNear(transform.map(sample), sample));
 }
 
 QTEST_APPLESS_MAIN(CanvasGeometryTests)

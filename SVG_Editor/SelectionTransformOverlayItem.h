@@ -1,12 +1,12 @@
 // =====================================================================
 // SelectionTransformOverlayItem.h
 // ---------------------------------------------------------------------
-// @brief   选中图形的「缩放 / 旋转」操控手柄（QGraphicsObject 子类）
+// @brief   选中图形的「缩放」操控手柄（QGraphicsObject 子类）
 // @details 当画布上有图形被选中时，CanvasView 会在场景中放置一个
 //          SelectionTransformOverlayItem 实例并实时跟随选中项的 bbox。
 //          它本身 **不** 修改任何 ShapeData：
-//            - paint()      绘制蓝色虚线选框 + 4 个角点方形手柄 + 上方圆形旋转手柄
-//            - shape()      用作 hit-test，仅 5 个手柄区域可被命中
+//            - paint()      绘制蓝色虚线选框 + 4 个角点方形手柄
+//            - shape()      用作 hit-test，仅 4 个手柄区域可被命中
 //            - handleAt()   告诉调用方鼠标当前落在哪个手柄上
 //          上层（CanvasView）拿到 handle 后再驱动真正的 transform 逻辑。
 // @layer   ui
@@ -31,9 +31,9 @@ class QWidget;
 
 /// @brief 选中图形的可交互覆盖层（操控手柄）。
 /// @details
-/// - 形状：选区 4 角各一个 10×10 方形手柄 + 选区正上方一个 6 半径的圆形旋转手柄。
-/// - 视觉：1px 蓝色虚线选框（`#2d7ff9`），手柄白底蓝框，旋转手柄蓝底。
-/// - 命中区：仅 5 个手柄矩形；选框线条本身不可点。
+/// - 形状：选区 4 角各一个 10×10 方形手柄。
+/// - 视觉：1px 蓝色虚线选框（`#2d7ff9`），手柄白底蓝框。
+/// - 命中区：仅 4 个手柄矩形；选框线条本身不可点。
 class SelectionTransformOverlayItem : public QGraphicsObject {
     Q_OBJECT
 
@@ -44,13 +44,13 @@ class SelectionTransformOverlayItem : public QGraphicsObject {
     /// @brief 构造。手柄默认隐藏，z 值固定为 1e6。
     explicit SelectionTransformOverlayItem(QGraphicsItem* parent = nullptr);
 
-    /// @brief Qt Graphics View 框架要求：返回 item 的外接矩形（含旋转手柄上方的留白）。
+    /// @brief Qt Graphics View 框架要求：返回 item 的外接矩形。
     QRectF boundingRect() const override;
 
-    /// @brief Qt Graphics View 框架要求：返回命中测试路径（5 个手柄矩形）。
+    /// @brief Qt Graphics View 框架要求：返回命中测试路径（4 个手柄矩形）。
     QPainterPath shape() const override;
 
-    /// @brief 绘制选框 + 5 个手柄。
+    /// @brief 绘制选框 + 4 个手柄。
     /// @param painter  Qt 传入的画笔
     /// @param option   Qt 传入的样式选项（未使用）
     /// @param widget   Qt 传入的目标 widget（未使用）
@@ -65,10 +65,10 @@ class SelectionTransformOverlayItem : public QGraphicsObject {
     /// @brief 当前选区 frame。
     SelectionFrame selectionFrame() const;
 
-    /// @brief 控制是否显示缩放锚点与旋转手柄。
+    /// @brief 控制是否显示缩放锚点。
     void setHandlesVisible(bool visible);
 
-    /// @brief 当前是否显示缩放锚点与旋转手柄。
+    /// @brief 当前是否显示缩放锚点。
     bool handlesVisible() const;
 
     /// @brief 命中测试：返回给定场景坐标点上的手柄。
@@ -80,9 +80,6 @@ class SelectionTransformOverlayItem : public QGraphicsObject {
     /// @brief 给定手柄位置，返回其在场景坐标系中的矩形（用作绘制与命中测试）。
     QRectF handleRect(Handle handle) const;
 
-    /// @brief 旋转手柄的圆心 = 选区顶边中点向上偏移 `kRotateHandleOffset`。
-    QPointF rotateHandleCenter() const;
-
     /// @brief 选区是否有效（两条轴长度都非零）。
     bool hasFrame() const;
 
@@ -92,6 +89,6 @@ class SelectionTransformOverlayItem : public QGraphicsObject {
     /// @brief 当前是否持有可绘制 frame。
     bool m_hasFrame = false;
 
-    /// @brief true 时绘制四角锚点和旋转手柄；false 时仅绘制虚线矩形。
+    /// @brief true 时绘制四角锚点；false 时仅绘制虚线矩形。
     bool m_handlesVisible = true;
 };

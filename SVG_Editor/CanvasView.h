@@ -68,8 +68,6 @@ class CanvasView : public QGraphicsView {
 
     struct TransformSession : MultiShapeSession {
         SelectionTransformOverlayItem::Handle handle = SelectionTransformOverlayItem::Handle::None;
-        QPointF startPoint;
-        QPointF handlePressOffsetLocal;
     };
 
     ShapeItem* selectedShapeItem() const;

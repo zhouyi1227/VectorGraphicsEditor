@@ -36,7 +36,9 @@ set(SVG_EDITOR_APP_SOURCES
   MainWindow.h
   TutorialDialog.cpp
   TutorialDialog.h
-  CanvasView.cpp
+  CanvasViewCore.cpp
+  CanvasViewInput.cpp
+  CanvasViewSelection.cpp
   CanvasView.h
   SelectionTransformOverlayItem.cpp
   SelectionTransformOverlayItem.h

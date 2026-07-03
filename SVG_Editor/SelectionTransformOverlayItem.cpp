@@ -3,10 +3,8 @@
 // ---------------------------------------------------------------------
 // @brief SelectionTransformOverlayItem.h 中声明方法的实现
 // @details
-//   - 绘制顺序：蓝色虚线选框 → 选区上沿到旋转手柄的连接线 → 4 个角点方形
-//     手柄（白底蓝框）→ 旋转手柄（蓝底圆）。
-//   - hit-test 使用 5 个手柄的矩形区域（包含旋转手柄的包围盒，足够覆盖
-//     视觉上的圆形）。
+//   - 绘制顺序：蓝色虚线选框 → 4 个角点方形手柄（白底蓝框）。
+//   - hit-test 使用 4 个手柄的矩形区域。
 //   - 选区为空时 (`m_bounds` 为 null / 空)，所有绘制与命中测试都直接 early-return。
 // =====================================================================
 
@@ -22,10 +20,6 @@ namespace {
 
 // 4 个角点方形手柄的边长（场景坐标）
 constexpr qreal kHandleSize = 10.0;
-// 旋转手柄的半径（场景坐标）
-constexpr qreal kRotateHandleRadius = 6.0;
-// 旋转手柄中心到选区上沿的垂直距离（场景坐标）
-constexpr qreal kRotateHandleOffset = 26.0;
 
 /// @brief 给定中心点与边长，返回以该点为中心的正方形。
 QRectF centeredRect(const QPointF& center, qreal size) {
@@ -55,7 +49,6 @@ QRectF SelectionTransformOverlayItem::boundingRect() const {
                                kBoundingRectPaddingPx);
     }
 
-    bounds = bounds.united(handleRect(Handle::Rotate));
     bounds = bounds.united(handleRect(Handle::TopLeft));
     bounds = bounds.united(handleRect(Handle::TopRight));
     bounds = bounds.united(handleRect(Handle::BottomLeft));
@@ -69,8 +62,8 @@ QPainterPath SelectionTransformOverlayItem::shape() const {
         return path;
     }
 
-    // 命中区 = 5 个手柄矩形（含旋转手柄的包围盒，覆盖视觉上的小圆已足够）
-    for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight, Handle::Rotate}) {
+    // 命中区 = 4 个角点手柄矩形
+    for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight}) {
         path.addRect(handleRect(handle));
     }
     return path;
@@ -99,19 +92,12 @@ void SelectionTransformOverlayItem::paint(QPainter* painter, const QStyleOptionG
         return;
     }
 
-    // 2) 选区上沿中点 → 旋转手柄圆心的连接线
-    painter->drawLine(m_frame.topCenter(), rotateHandleCenter());
-
-    // 3) 4 个角点方形手柄（白底蓝框）
+    // 2) 4 个角点方形手柄（白底蓝框）
     painter->setPen(QPen(QColor(kAccentColorHex)));
     painter->setBrush(QColor("#ffffff"));
     for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight}) {
         painter->drawRect(handleRect(handle));
     }
-
-    // 4) 旋转手柄（蓝底圆）
-    painter->setBrush(QColor(kAccentColorHex));
-    painter->drawEllipse(handleRect(Handle::Rotate));
     painter->restore();
 }
 
@@ -149,8 +135,8 @@ SelectionTransformOverlayItem::Handle SelectionTransformOverlayItem::handleAt(co
         return Handle::None;
     }
 
-    // 顺序：4 个角点 → 旋转。命中即返回，第一个赢家即返回值。
-    for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight, Handle::Rotate}) {
+    // 顺序：左上、右上、左下、右下。命中即返回。
+    for (Handle handle : {Handle::TopLeft, Handle::TopRight, Handle::BottomLeft, Handle::BottomRight}) {
         if (handleRect(handle).contains(scenePoint)) {
             return handle;
         }
@@ -169,19 +155,11 @@ QRectF SelectionTransformOverlayItem::handleRect(Handle handle) const {
         return centeredRect(m_frame.bottomLeft(), kHandleSize);
     case Handle::BottomRight:
         return centeredRect(m_frame.bottomRight(), kHandleSize);
-    case Handle::Rotate:
-        // 旋转手柄的 hit/test 矩形 = 2 倍半径的包围盒（paint 时画圆）
-        return centeredRect(rotateHandleCenter(), kRotateHandleRadius * 2.0);
     case Handle::None:
         return QRectF();
     }
 
     return QRectF();
-}
-
-QPointF SelectionTransformOverlayItem::rotateHandleCenter() const {
-    // 旋转后的 frame 也必须沿当前顶边外法线放置旋转手柄，才能保持交互语义一致。
-    return m_frame.topCenter() + m_frame.topNormal() * kRotateHandleOffset;
 }
 
 bool SelectionTransformOverlayItem::hasFrame() const { return m_hasFrame; }

@@ -15,15 +15,39 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 
+#include <cmath>
 #include <unordered_set>
 
 #include "CanvasViewConstants.h"
 
+namespace {
+
+constexpr qreal kTransformEpsilon = 0.0001;
+
+bool isSupportedTransform(const QTransform& transform) {
+    return std::abs(transform.m12()) <= kTransformEpsilon && std::abs(transform.m21()) <= kTransformEpsilon &&
+           transform.m11() > kTransformEpsilon && transform.m22() > kTransformEpsilon;
+}
+
+QString unsupportedTransformError(int shapeIndex) {
+    return QString("Unsupported transform at shape index %1. Rotation is no longer supported.").arg(shapeIndex);
+}
+
+} // namespace
+
 bool FileManager::saveToFile(const QString& filePath, const DocumentData& document, QString* errorMessage) {
     // 把所有 ShapeData 预序列化为 JSON 数组
     QJsonArray shapeArray;
+    int shapeIndex = 0;
     for (const ShapeData& shape : document.shapes) {
+        if (!isSupportedTransform(shape.transform)) {
+            if (errorMessage != nullptr) {
+                *errorMessage = unsupportedTransformError(shapeIndex);
+            }
+            return false;
+        }
         shapeArray.append(shapeDataToJson(shape));
+        ++shapeIndex;
     }
 
     // 文档根结构：version + canvas + shapes
@@ -92,6 +116,12 @@ std::optional<DocumentData> FileManager::loadFromFile(const QString& filePath, Q
         if (!shape.has_value()) {
             if (errorMessage != nullptr) {
                 *errorMessage = QString("Invalid shape data at index %1.").arg(shapeIndex);
+            }
+            return std::nullopt;
+        }
+        if (!isSupportedTransform(shape->transform)) {
+            if (errorMessage != nullptr) {
+                *errorMessage = unsupportedTransformError(shapeIndex);
             }
             return std::nullopt;
         }

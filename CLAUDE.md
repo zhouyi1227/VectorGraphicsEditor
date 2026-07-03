@@ -71,7 +71,7 @@ ui         MainWindow                          — menus, toolbar, QActionGroup,
   ↳        PropertyPanel                       — reactive editor for selected shape (single-selection only)
   ↳        TutorialDialog                      — bilingual HTML help dialog
   ↳        ShapeItem (QGraphicsObject)         — paint + hit-test for one shape
-  ↳        SelectionTransformOverlayItem       — dashed bbox + 4 corner resize handles + rotate handle
+  ↳        SelectionTransformOverlayItem       — dashed bbox + 4 corner resize handles
   ↳        ThemeMode / ThemeUtils              — light / dark / system theme (QPalette + Fusion style)
 core       ShapeData                           — pure data + JSON (de)serialization (only struct crossing every layer)
   ↳        FileManager                         — document-level JSON I/O (versioned .vgjson, see below)
@@ -88,7 +88,7 @@ core       ShapeData                           — pure data + JSON (de)serializ
 - **Three interactive workflows live in `CanvasView`** and are mutually exclusive. `setTool()` and `cancelDrawing()` must keep them clean:
   1. **Drag workflow** (`beginDragShape` / `updateDragPreview` / `finishDragShape`) — used by `Line` / `Rectangle` / `Circle` / `Ellipse`. Shares `m_previewItem`.
   2. **Path workflow** (`beginPathPoint` / `updatePathPreview` / `finishPathShape`) — used by `Polyline` / `Polygon`. Also shares `m_previewItem`.
-  3. **Transform session** (`beginTransformSession` / `updateTransformSession` / `finishTransformSession` / `cancelTransformSession`) — multi-select resize via 4 corner handles + rotate via top handle, driven by `SelectionTransformOverlayItem`. Uses `m_transformSession` (snapshot + restore on cancel), **not** `m_previewItem`. Shift-modifier snaps to 15° / equal aspect.
+  3. **Transform session** (`beginTransformSession` / `updateTransformSession` / `finishTransformSession` / `cancelTransformSession`) — multi-select resize via 4 corner handles, driven by `SelectionTransformOverlayItem`. Uses `m_transformSession` (snapshot + restore on cancel), **not** `m_previewItem`. Shift-modifier keeps aspect ratio.
   Both the drag and path workflows free `m_previewItem` on `cancelDrawing()`. The transform session is independent and is cancelled by `cancelTransformSession()` (called on tool switch and `Esc`).
 - **In-place move of selected items** uses `ShapeItem::setPendingMoveOffset` / `commitPendingMoveOffset` / `hasPendingMoveOffset`. The bbox display is updated immediately; the underlying `ShapeData` is only rewritten on `mouseReleaseEvent` to avoid noisy `shapeChanged` signals during drag.
 - **`CanvasView::nextZValue()`** is the only source of new z values; never hardcode `zValue` in scene code. `ShapeItem` adds a small per-item z delta on top to disambiguate hit-tests for same-z shapes.

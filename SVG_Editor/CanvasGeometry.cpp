@@ -9,8 +9,6 @@
 
 #include "CanvasGeometry.h"
 
-#include <QtMath>
-
 #include <algorithm>
 #include <cmath>
 
@@ -28,7 +26,6 @@ QPointF localPointForHandleImpl(CanvasHandle handle) {
         return QPointF(0.0, 1.0);
     case CanvasHandle::BottomRight:
         return QPointF(1.0, 1.0);
-    case CanvasHandle::Rotate:
     case CanvasHandle::None:
         return QPointF(0.5, 0.5);
     }
@@ -45,20 +42,25 @@ CanvasHandle oppositeHandle(CanvasHandle handle) {
         return CanvasHandle::TopRight;
     case CanvasHandle::BottomRight:
         return CanvasHandle::TopLeft;
-    case CanvasHandle::Rotate:
     case CanvasHandle::None:
         return CanvasHandle::None;
     }
     return CanvasHandle::None;
 }
 
-qreal angleFromCenter(const QPointF& center, const QPointF& point) {
-    return std::atan2(point.y() - center.y(), point.x() - center.x());
+qreal dotProduct(const QPointF& lhs, const QPointF& rhs) { return lhs.x() * rhs.x() + lhs.y() * rhs.y(); }
+
+qreal vectorLength(const QPointF& vector) { return std::hypot(vector.x(), vector.y()); }
+
+QPointF normalizedVector(const QPointF& vector) {
+    const qreal length = vectorLength(vector);
+    if (qFuzzyIsNull(length)) {
+        return QPointF();
+    }
+    return QPointF(vector.x() / length, vector.y() / length);
 }
 
 } // namespace
-
-QPointF localPointForHandle(CanvasHandle handle) { return localPointForHandleImpl(handle); }
 
 namespace canvas_geometry {
 
@@ -71,26 +73,25 @@ QRectF circleRectFromPoints(const QPointF& start, const QPointF& end) {
     return QRectF(x, y, side, side);
 }
 
-qreal snapAngleDegrees(qreal degrees) { return std::round(degrees / 15.0) * 15.0; }
-
 SelectionFrame scaledFrameFromHandle(CanvasHandle handle, const SelectionFrame& frame, const QPointF& currentPoint,
-                                     const QPointF& handlePressOffsetLocal, bool keepAspectRatio) {
-    const QTransform localToScene = frame.localToSceneTransform();
-    bool invertible = false;
-    const QTransform sceneToLocal = localToScene.inverted(&invertible);
-    if (!invertible) {
-        return frame.orthonormalized();
+                                     bool keepAspectRatio) {
+    const SelectionFrame baseFrame = frame.isOrthogonal() ? frame : frame.orthonormalized();
+    const qreal xLength = vectorLength(baseFrame.xAxis);
+    const qreal yLength = vectorLength(baseFrame.yAxis);
+    if (qFuzzyIsNull(xLength) || qFuzzyIsNull(yLength)) {
+        return baseFrame;
     }
 
     const QPointF handleLocal = localPointForHandleImpl(handle);
     const QPointF pivotLocal = localPointForHandleImpl(oppositeHandle(handle));
-    const QPointF currentLocal = sceneToLocal.map(currentPoint) - handlePressOffsetLocal;
-    const qreal startDx = handleLocal.x() - pivotLocal.x();
-    const qreal startDy = handleLocal.y() - pivotLocal.y();
-    qreal scaleX = qFuzzyIsNull(startDx) ? 1.0 : (currentLocal.x() - pivotLocal.x()) / startDx;
-    qreal scaleY = qFuzzyIsNull(startDy) ? 1.0 : (currentLocal.y() - pivotLocal.y()) / startDy;
-    scaleX = std::max(scaleX, kMinimumScaleFactor);
-    scaleY = std::max(scaleY, kMinimumScaleFactor);
+    const qreal signX = handleLocal.x() - pivotLocal.x();
+    const qreal signY = handleLocal.y() - pivotLocal.y();
+    const QPointF xDirection = normalizedVector(baseFrame.xAxis);
+    const QPointF yDirection = normalizedVector(baseFrame.yAxis);
+    const QPointF pivotPoint = baseFrame.topLeft + baseFrame.xAxis * pivotLocal.x() + baseFrame.yAxis * pivotLocal.y();
+    const QPointF pivotToCurrent = currentPoint - pivotPoint;
+    qreal scaleX = std::max((signX * dotProduct(pivotToCurrent, xDirection)) / xLength, kMinimumScaleFactor);
+    qreal scaleY = std::max((signY * dotProduct(pivotToCurrent, yDirection)) / yLength, kMinimumScaleFactor);
 
     if (keepAspectRatio) {
         const qreal magnitude = std::max(scaleX, scaleY);
@@ -98,27 +99,11 @@ SelectionFrame scaledFrameFromHandle(CanvasHandle handle, const SelectionFrame& 
         scaleY = magnitude;
     }
 
-    QTransform localScale;
-    localScale.translate(pivotLocal.x(), pivotLocal.y());
-    localScale.scale(scaleX, scaleY);
-    localScale.translate(-pivotLocal.x(), -pivotLocal.y());
-    return frame.mapped(localToScene * localScale * sceneToLocal).orthonormalized();
-}
-
-SelectionFrame rotatedFrameFromPoints(const SelectionFrame& frame, const QPointF& startPoint, const QPointF& currentPoint,
-                                      bool snapToFifteenDegrees) {
-    const QPointF center = frame.center();
-    qreal rotationDegrees =
-        qRadiansToDegrees(angleFromCenter(center, currentPoint) - angleFromCenter(center, startPoint));
-    if (snapToFifteenDegrees) {
-        rotationDegrees = snapAngleDegrees(rotationDegrees);
-    }
-
-    QTransform transform;
-    transform.translate(center.x(), center.y());
-    transform.rotate(rotationDegrees);
-    transform.translate(-center.x(), -center.y());
-    return frame.mapped(transform).orthonormalized();
+    SelectionFrame scaledFrame;
+    scaledFrame.xAxis = xDirection * (xLength * scaleX);
+    scaledFrame.yAxis = yDirection * (yLength * scaleY);
+    scaledFrame.topLeft = pivotPoint - scaledFrame.xAxis * pivotLocal.x() - scaledFrame.yAxis * pivotLocal.y();
+    return scaledFrame;
 }
 
 QTransform transformBetweenFrames(const SelectionFrame& source, const SelectionFrame& target) {
@@ -132,15 +117,8 @@ QTransform transformBetweenFrames(const SelectionFrame& source, const SelectionF
 }
 
 QTransform scaleTransformFromHandle(CanvasHandle handle, const SelectionFrame& frame, const QPointF& currentPoint,
-                                    const QPointF& handlePressOffsetLocal, bool keepAspectRatio) {
-    return transformBetweenFrames(frame,
-                                  scaledFrameFromHandle(handle, frame, currentPoint, handlePressOffsetLocal,
-                                                       keepAspectRatio));
-}
-
-QTransform rotationTransformFromPoints(const SelectionFrame& frame, const QPointF& startPoint,
-                                       const QPointF& currentPoint, bool snapToFifteenDegrees) {
-    return transformBetweenFrames(frame, rotatedFrameFromPoints(frame, startPoint, currentPoint, snapToFifteenDegrees));
+                                    bool keepAspectRatio) {
+    return transformBetweenFrames(frame, scaledFrameFromHandle(handle, frame, currentPoint, keepAspectRatio));
 }
 
 } // namespace canvas_geometry

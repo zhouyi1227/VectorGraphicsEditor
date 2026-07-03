@@ -317,7 +317,7 @@ void PropertyPanel::updateSelectionTexts() {
 
     m_hintLabel->setText(i18n::tr(m_language, "panel.hint_transformed",
                                   "This transformed shape only supports style edits.",
-                                  "当前图形已发生缩放或旋转，仅支持样式编辑。"));
+                                  "当前图形已发生不受几何面板支持的变换，仅支持样式编辑。"));
 }
 
 void PropertyPanel::rebuildLineStyleCombo() {

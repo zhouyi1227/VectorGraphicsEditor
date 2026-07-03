@@ -9,7 +9,7 @@
 //            能从场景 items 中精确识别出本类实例。
 // @layer   graphics
 // @warning ShapeItem 不再使用 Qt 的 `ItemIsMovable` 临时位移；几何变换统一
-//          通过 `ShapeData::transform` 持久化，由 CanvasView 协调拖动 / 缩放 / 旋转。
+//          通过 `ShapeData::transform` 持久化，由 CanvasView 协调拖动 / 缩放。
 // =====================================================================
 
 #pragma once
