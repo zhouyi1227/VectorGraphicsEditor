@@ -5,11 +5,21 @@ transition: slide-left
 
 # 多态与策略模式
 
+<style>
+.deck-lead { margin-bottom: 0.5rem; font-size: 0.88rem; line-height: 1.4; }
+pre.shiki { font-size: 0.7rem !important; padding: 0.55rem 0.75rem !important; line-height: 1.45; }
+.split-even { gap: 0.7rem; margin-top: 0.6rem !important; }
+.rail-copy { font-size: 0.78rem; line-height: 1.4; }
+.rail-title { font-size: 0.88rem; }
+.rail-list { gap: 0.45rem; }
+.deck-stage { padding: 0.75rem 1rem; }
+.rail-item { padding-left: 0.7rem; }
+</style>
+
 <div class="deck-rule"></div>
 
 <div class="deck-lead">
-  创建流程通过 <code>ICreationStrategy</code> 统一暴露，<code>CanvasView</code> 只持有基类指针。
-  因此工具切换发生在运行时，视图类本身不需要继续膨胀成一串巨大的 <code>if / else</code>。
+  创建流程通过 <code>ICreationStrategy</code> 统一暴露，<code>CanvasView</code> 只持有基类指针。工具切换发生在运行时，视图类不会膨胀成一串 if / else。
 </div>
 
 ```cpp {1|2-8}
@@ -31,28 +41,28 @@ class ICreationStrategy {
     <div class="rail-list">
       <div v-click class="rail-item">
         <div class="rail-title"><code>DragCreationStrategy</code></div>
-        <div class="rail-copy">负责直线、圆、椭圆和矩形，适合“按下-拖拽-释放”的连续手势。</div>
+        <div class="rail-copy">直线、圆、椭圆、矩形，对应「按下—拖拽—释放」连续手势。</div>
       </div>
       <div v-click class="rail-item">
         <div class="rail-title"><code>PathCreationStrategy</code></div>
-        <div class="rail-copy">负责折线和多边形，适合“逐点采样、显式结束”的离散输入。</div>
+        <div class="rail-copy">折线、多边形，对应「逐点采样、Enter / 双击结束」。</div>
       </div>
     </div>
   </div>
   <div class="rail-list">
     <div v-click class="rail-item">
-      <div class="rail-index">CANVASVIEW</div>
+      <div class="rail-index">CanvasView</div>
       <div class="rail-title">只负责路由</div>
-      <div class="rail-copy">在 <code>mousePressEvent / mouseMoveEvent / mouseReleaseEvent</code> 中通过基类指针调用 <code>begin / update / finish</code>。</div>
+      <div class="rail-copy">在 <code>mousePressEvent / mouseMoveEvent / mouseReleaseEvent</code> 里通过基类指针调用 <code>begin / update / finish</code>。</div>
     </div>
     <div v-click class="rail-item">
-      <div class="rail-index">PAYOFF</div>
-      <div class="rail-title">扩展成本稳定</div>
-      <div class="rail-copy">新增创建方式时，主要工作是补一个策略并接入工具路由，而不是改动整块输入状态机。</div>
+      <div class="rail-index">扩展</div>
+      <div class="rail-title">新增工具只补一个策略</div>
+      <div class="rail-copy">加一种图形 = 补一个策略 + 接入路由。</div>
     </div>
   </div>
 </div>
 
 <!--
-这一页重点回答“多态具体体现在哪里”。四个条件是：基类虚函数、派生类 override、基类指针调用、指向派生类对象。这里四个条件全满足，所以这不是形式上的接口，而是真正的运行时多态。
+各位老师，这一页我讲运行时多态具体落在哪里。运行时多态的四条件：基类虚函数、派生类 override、基类指针调用、指向派生类对象——这里四条件全满足，所以这不是形式上的接口，是真的运行时多态。ICreationStrategy 的 begin / update / finish / cancel / inProgress 五个虚函数是契约。DragCreationStrategy 处理按下-拖拽-释放这种连续手势，对应 Line / Circle / Ellipse / Rectangle；PathCreationStrategy 处理逐点采样，对应 Polyline / Polygon。CanvasView 在 mousePressEvent / mouseMoveEvent / mouseReleaseEvent 里通过基类指针调用策略，不为每种图形写一份分支代码。扩展成本的稳定性是策略模式的主要价值：加一种新图形，工作量就是补一个策略类加接入工具路由，不会改动输入状态机本身。
 -->

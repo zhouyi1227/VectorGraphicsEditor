@@ -121,16 +121,37 @@
 .split-2 {
   display: grid;
   grid-template-columns: 1.2fr 0.85fr;
-  gap: 1.4rem;
+  gap: 2.5rem;
+  column-gap: 2.5rem;
   align-items: start;
 }
 
 .split-even {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.35rem;
+  gap: 2.5rem;
+  column-gap: 2.5rem;
   align-items: start;
 }
+
+.slidev-layout.two-cols,
+.slidev-layout.two-cols-header,
+.slidev-layout.two-cols-left,
+.slidev-layout.two-cols-right {
+  gap: 4rem !important;
+  column-gap: 4rem !important;
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.slidev-layout.two-cols > .col-left,
+.slidev-layout.two-cols-header > .col-left,
+.slidev-layout.two-cols-left > .col-left { padding-right: 0 !important; }
+.slidev-layout.two-cols > .col-right,
+.slidev-layout.two-cols-header > .col-right,
+.slidev-layout.two-cols-right > .col-right { padding-left: 1rem !important; }
 
 .metric-strip {
   display: grid;
