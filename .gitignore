@@ -24,3 +24,14 @@ install_manifest.txt
 *.log
 *.user
 *.sln
+
+# Slidev presentation
+presentation/node_modules/
+presentation/dist/
+presentation/.vite-inspect/
+presentation/.remote-assets/
+presentation/components.d.ts
+presentation/official_example
+
+# Agents
+.agents/
