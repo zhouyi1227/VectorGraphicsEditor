@@ -5,7 +5,7 @@ transition: slide-left
 
 # 依赖注入与创建上下文
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
 ::left::
 
@@ -20,22 +20,25 @@ struct CreationContext {
 };
 ```
 
-<div class="mt-4 text-xs text-slate-400">`CanvasView` 在构造函数里一次性把回调注入三个创建策略。</div>
+<div class="diagram-caption"><code>CanvasView</code> 在构造函数中一次性把这组能力注入到三个创建策略对象里。</div>
 
 ::right::
 
-<div class="space-y-4 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">为什么不用“策略直接依赖 CanvasView”</div>
-    <div class="text-slate-500">那样策略会反向耦合整个视图类，难以测试，也让职责边界变得模糊。</div>
+<div class="rail-list">
+  <div v-click class="rail-item">
+    <div class="rail-index">WHY</div>
+    <div class="rail-title">为什么不用“策略直接依赖 CanvasView”</div>
+    <div class="rail-copy">那样策略会反向耦合整个视图类，测试和复用都会受到窗口内部状态的牵制。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">注入的内容</div>
-    <div class="text-slate-500">策略只拿到它真正需要的能力：生成 ID、查询当前样式、分配 z 值、把图形加入场景。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">INJECT</div>
+    <div class="rail-title">真正注入的是能力，不是容器</div>
+    <div class="rail-copy">策略只拿到生成 ID、读取当前样式、分配 z 值、把图形加入场景这些最小必要能力。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">直接效果</div>
-    <div class="text-slate-500">`canvas` 层可以把算法和界面容器解耦，同一套策略既能驱动 preview item，也能最终落盘为真实图形。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">RESULT</div>
+    <div class="rail-title">预览和落盘共用一套逻辑</div>
+    <div class="rail-copy">同一套策略既能驱动 preview item，也能在最终释放鼠标时生成真实图形对象。</div>
   </div>
 </div>
 

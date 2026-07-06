@@ -1,13 +1,16 @@
 ---
-layout: two-cols
+layout: default
 transition: slide-left
 ---
 
 # 多态与策略模式
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
-::left::
+<div class="deck-lead">
+  创建流程通过 <code>ICreationStrategy</code> 统一暴露，<code>CanvasView</code> 只持有基类指针。
+  因此工具切换发生在运行时，视图类本身不需要继续膨胀成一串巨大的 <code>if / else</code>。
+</div>
 
 ```cpp {1|2-8}
 class ICreationStrategy {
@@ -21,17 +24,34 @@ class ICreationStrategy {
 };
 ```
 
-::right::
-
-<div class="text-sm text-slate-500 mb-4">创建流程被拆成统一接口 `ICreationStrategy`，具体行为在运行时绑定到不同工具。</div>
-
-<v-clicks>
-
-- **两类具体策略**：`DragCreationStrategy` 处理直线 / 圆 / 椭圆 / 矩形，`PathCreationStrategy` 处理折线 / 多边形。
-- **CanvasView 的用法**：只持有 `unique_ptr<ICreationStrategy>`，在 `mousePressEvent / mouseMoveEvent / mouseReleaseEvent` 中通过基类指针调用 `begin / update / finish`。
-- **收益**：新增一种创建方式时，只需要新增策略并接入路由，而不是把大量 `if / else` 分支继续堆进视图类。
-
-</v-clicks>
+<div class="split-even mt-5">
+  <div class="deck-stage">
+    <div class="eyebrow">运行时分工</div>
+    <div class="thin-divider"></div>
+    <div class="rail-list">
+      <div v-click class="rail-item">
+        <div class="rail-title"><code>DragCreationStrategy</code></div>
+        <div class="rail-copy">负责直线、圆、椭圆和矩形，适合“按下-拖拽-释放”的连续手势。</div>
+      </div>
+      <div v-click class="rail-item">
+        <div class="rail-title"><code>PathCreationStrategy</code></div>
+        <div class="rail-copy">负责折线和多边形，适合“逐点采样、显式结束”的离散输入。</div>
+      </div>
+    </div>
+  </div>
+  <div class="rail-list">
+    <div v-click class="rail-item">
+      <div class="rail-index">CANVASVIEW</div>
+      <div class="rail-title">只负责路由</div>
+      <div class="rail-copy">在 <code>mousePressEvent / mouseMoveEvent / mouseReleaseEvent</code> 中通过基类指针调用 <code>begin / update / finish</code>。</div>
+    </div>
+    <div v-click class="rail-item">
+      <div class="rail-index">PAYOFF</div>
+      <div class="rail-title">扩展成本稳定</div>
+      <div class="rail-copy">新增创建方式时，主要工作是补一个策略并接入工具路由，而不是改动整块输入状态机。</div>
+    </div>
+  </div>
+</div>
 
 <!--
 这一页重点回答“多态具体体现在哪里”。四个条件是：基类虚函数、派生类 override、基类指针调用、指向派生类对象。这里四个条件全满足，所以这不是形式上的接口，而是真正的运行时多态。

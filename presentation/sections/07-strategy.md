@@ -1,11 +1,15 @@
 ---
-layout: two-cols
+layout: two-cols-header
 transition: slide-left
 ---
 
-# 核心数据模型 `ShapeData`
+# 核心数据模型
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
+<div class="deck-lead">
+  <code>ShapeData</code> 是整个项目最重要的边界对象。
+  它不持有界面行为，只负责把图形的身份、几何、样式、变换和层级稳定地传给图形层、文件层和界面层。
+</div>
 
 ::left::
 
@@ -21,22 +25,25 @@ struct ShapeData {
 };
 ```
 
-<div class="mt-4 text-xs text-slate-400">真实定义位于 `core/ShapeData.h`，它是跨 `core / graphics / canvas / ui` 的唯一公共数据结构。</div>
+<div class="diagram-caption">真实定义位于 <code>core/ShapeData.h</code>，它是跨 <code>core / graphics / canvas / ui</code> 的统一边界对象。</div>
 
 ::right::
 
-<div class="space-y-4 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">单一边界模型</div>
-    <div class="text-slate-500">界面、图形、文件 I/O 都通过 `ShapeData` 交换信息，避免把 `QGraphicsItem` 之类的视图对象泄漏到核心层。</div>
+<div class="rail-list">
+  <div v-click class="rail-item">
+    <div class="rail-index">BOUNDARY</div>
+    <div class="rail-title">单一边界模型</div>
+    <div class="rail-copy">界面、图形和文件 I/O 都通过 <code>ShapeData</code> 交换信息，避免让视图对象泄漏到核心层。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">几何语义按类型切换</div>
-    <div class="text-slate-500">`Point / Line / Polyline / Polygon` 用 `points`，`Circle / Ellipse / Rectangle` 用 `rect`，同一结构统一承载七种图形。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">GEOMETRY</div>
+    <div class="rail-title">同一结构承载七种图形</div>
+    <div class="rail-copy"><code>Point / Line / Polyline / Polygon</code> 主要使用 <code>points</code>，<code>Circle / Ellipse / Rectangle</code> 主要使用 <code>rect</code>。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">配套规则</div>
-    <div class="text-slate-500">`normalizedShapeData()` 负责负宽高归一化、圆形外接框正方形化；JSON 字段名是稳定持久化契约。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">CONTRACT</div>
+    <div class="rail-title">规则放在自由函数里</div>
+    <div class="rail-copy"><code>normalizedShapeData()</code> 处理负宽高与圆形正方形化；序列化函数则负责稳定的 JSON 字段契约。</div>
   </div>
 </div>
 

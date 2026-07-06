@@ -5,29 +5,28 @@ transition: slide-left
 
 # 关键设计取舍 / 难点解决
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
-<div class="grid grid-cols-2 gap-4 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">数据与视图分离</div>
-    <div class="text-slate-500">`CanvasView` 不直接读写 `ShapeItem` 内部状态，统一通过 `ShapeData` 和工厂 / setter 交互，序列化更稳定。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">防重入编辑面板</div>
-    <div class="text-slate-500">`m_updatingWidgets` 阻断 “程序更新控件 → valueChanged → 再次 emit” 的死循环，这是属性面板最关键的稳定器。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">选择变换数学抽象</div>
-    <div class="text-slate-500">复杂的缩放 / 保比例 / 防翻转没有硬塞进 `mouseMoveEvent`，而是抽成 `SelectionFrame + CanvasGeometry` 组合。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">文件格式的保守约束</div>
-    <div class="text-slate-500">版本固定为 2，transform 明确拒绝旋转，减少了 I/O 语义分歧，也让测试边界更清晰。</div>
-  </div>
+<div class="statement-band mb-6">
+  我在这个项目里优先选择“可解释、可测试、可维护”的解，而不是短期内最省代码的解。
 </div>
 
-<div v-click class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-  我在这个项目里优先选择“可解释、可测试、可维护”的解，而不是短期内最省代码的解。
+<div class="rail-list">
+  <div v-click class="rail-item">
+    <div class="rail-index">CHOICE 01</div>
+    <div class="rail-title">数据与视图分离</div>
+    <div class="rail-copy"><code>CanvasView</code> 不直接读写 <code>ShapeItem</code> 内部状态，而是通过 <code>ShapeData</code> 与工厂 / setter 交互，让序列化和复制逻辑保持稳定。</div>
+  </div>
+  <div v-click class="rail-item">
+    <div class="rail-index">CHOICE 02</div>
+    <div class="rail-title">属性面板防重入</div>
+    <div class="rail-copy"><code>m_updatingWidgets</code> 专门阻断“程序更新控件 → valueChanged → 再次 emit”的死循环，这是界面稳定性的关键保护层。</div>
+  </div>
+  <div v-click class="rail-item">
+    <div class="rail-index">CHOICE 03</div>
+    <div class="rail-title">几何与文件契约保守收敛</div>
+    <div class="rail-copy">缩放抽象成 <code>SelectionFrame + CanvasGeometry</code>，文件格式固定为 <code>version 2</code> 并拒绝旋转 transform，避免交互与 I/O 语义同时失控。</div>
+  </div>
 </div>
 
 <!--

@@ -1,44 +1,51 @@
 ---
-layout: two-cols
+layout: default
 transition: slide-left
 ---
 
 # 需求与目标
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
-::left::
-
-<div class="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm">
-  <div class="font-semibold text-slate-700 mb-3">题目要求</div>
-  <v-clicks>
-
-  - 实现一个可视化矢量图形处理系统，而不是单纯的数据结构练习。
-  - 支持基础图形的创建、选择、编辑和保存，能完成一次完整作业流程。
-  - 用课程内的 OOP 知识组织代码，而不是把逻辑全部塞进一个窗口类。
-
-  </v-clicks>
+<div class="deck-lead">
+  课程题目要求的不只是“能画图”，而是把面向对象课程里的抽象、继承、多态、文件操作和界面交互整合成一个可运行系统。
 </div>
 
-<div v-click class="mt-4 rounded-xl border border-slate-200 p-5 text-sm">
-  <div class="font-semibold text-slate-700 mb-3">核心用户操作</div>
-  <div class="text-slate-600">选工具 → 在画布创建图形 → 调整样式与几何参数 → 多选 / 变换 → 保存文档或导出 PNG。</div>
-</div>
-
-::right::
-
-<div class="space-y-4 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">功能目标</div>
-    <div class="text-slate-500">保证 7 种图形、两类创建流程、属性面板、复制粘贴、文件 I/O、主题与语言切换都可用。</div>
+<div class="split-even">
+  <div class="deck-stage">
+    <div class="eyebrow">题目要求</div>
+    <div class="thin-divider"></div>
+    <div class="rail-list">
+      <div v-click class="rail-item">
+        <div class="rail-title">完成一次真实编辑流程</div>
+        <div class="rail-copy">从创建、选择、修改到保存与导出，用户需要能连续完成一整条操作链路。</div>
+      </div>
+      <div v-click class="rail-item">
+        <div class="rail-title">知识点必须落到代码结构里</div>
+        <div class="rail-copy">课程中的 OOP 概念要体现在类设计、接口抽象和运行时行为上，而不是只写在汇报里。</div>
+      </div>
+      <div v-click class="rail-item">
+        <div class="rail-title">系统要能解释、能验证</div>
+        <div class="rail-copy">不仅展示界面结果，还要能说明架构原因、文件契约和测试证据。</div>
+      </div>
+    </div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">工程目标</div>
-    <div class="text-slate-500">分层清晰、数据模型稳定、关键行为可测试、跨平台构建路径统一。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">边界选择</div>
-    <div class="text-slate-500">暂不做撤销/重做、旋转编辑、标准 SVG 互操作，优先把当前功能做完整、做稳定。</div>
+  <div class="rail-list">
+    <div v-click class="rail-item">
+      <div class="rail-index">OBJECTIVE A</div>
+      <div class="rail-title">功能目标</div>
+      <div class="rail-copy">稳定覆盖 7 种图形、两类创建流程、属性编辑、复制粘贴、文件 I/O、语言与主题切换。</div>
+    </div>
+    <div v-click class="rail-item">
+      <div class="rail-index">OBJECTIVE B</div>
+      <div class="rail-title">工程目标</div>
+      <div class="rail-copy">保持分层清晰、数据模型稳定、交互边界可测试、跨平台构建路径统一。</div>
+    </div>
+    <div v-click class="rail-item">
+      <div class="rail-index">BOUNDARY</div>
+      <div class="rail-title">范围收敛</div>
+      <div class="rail-copy">当前刻意不做撤销/重做、旋转编辑和标准 SVG 互操作，优先把现有闭环做完整、做稳定。</div>
+    </div>
   </div>
 </div>
 

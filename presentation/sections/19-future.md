@@ -1,48 +1,66 @@
 ---
-layout: two-cols-header
+layout: default
 transition: slide-left
 ---
 
-# 演示与问答提示
+# 现场演示闭环
 
-<div class="text-sm text-slate-500 mb-2">最后一页不再讲新实现，而是把现场演示路线和高频提问点提前准备好。</div>
-
-::left::
-
-<div class="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm h-full">
-  <div class="font-semibold text-slate-700 mb-3">建议 demo 路线</div>
-  <v-clicks>
-
-  1. 选择 `Rectangle` 工具拖出一个矩形。
-  2. 在 `PropertyPanel` 修改描边宽度、线型和填充色。
-  3. 框选多个图形，拖四角手柄演示缩放，按住 `Shift` 展示等比约束。
-  4. `Ctrl+C / Ctrl+V` 演示深拷贝和 16px 粘贴偏移。
-  5. 保存为 `.vgjson`，重新打开验证持久化正确；最后导出 PNG。
-
-  </v-clicks>
+<div class="deck-rule"></div>
+<div class="deck-lead">
+  如果把系统价值压缩成一次现场操作，最能体现它完整性的就是这五步：创建、编辑、变换、复制和持久化。
 </div>
 
-::right::
+<div class="process-row mt-6">
+  <div v-click class="process-step">
+    <div class="process-no">DEMO 01</div>
+    <div class="process-title">创建</div>
+    <div class="process-copy">拖出矩形，建立输入闭环。</div>
+  </div>
+  <div v-click class="process-step">
+    <div class="process-no">DEMO 02</div>
+    <div class="process-title">编辑</div>
+    <div class="process-copy">修改描边、线型和填充。</div>
+  </div>
+  <div v-click class="process-step">
+    <div class="process-no">DEMO 03</div>
+    <div class="process-title">变换</div>
+    <div class="process-copy">多选缩放，按 <code>Shift</code> 展示等比约束。</div>
+  </div>
+  <div v-click class="process-step">
+    <div class="process-no">DEMO 04</div>
+    <div class="process-title">复制</div>
+    <div class="process-copy">验证深拷贝与 16px 偏移。</div>
+  </div>
+  <div v-click class="process-step">
+    <div class="process-no">DEMO 05</div>
+    <div class="process-title">持久化</div>
+    <div class="process-copy">保存、重开并导出。</div>
+  </div>
+</div>
 
-<div class="space-y-3 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700">为什么 `ShapeData` 用 `struct`？</div>
-    <div class="text-slate-500">它是纯数据边界对象，字段跨层共享，行为放在自由函数中更清晰。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700">为什么策略接口析构要 `virtual`？</div>
-    <div class="text-slate-500">策略通过基类指针管理，不加虚析构就无法安全销毁派生对象。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700">为什么不直接继承 `QGraphicsItem`？</div>
-    <div class="text-slate-500">`QGraphicsObject` 同时提供图形项能力和 `QObject` 生态，更适合需要元对象支持的场景。</div>
-  </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700">属性面板为什么不会死循环？</div>
-    <div class="text-slate-500">因为 `setShapeData()` 期间开启 `m_updatingWidgets`，程序更新控件不会再次触发 emit。</div>
+<div class="deck-stage tight mt-6">
+  <div class="eyebrow">观众可直接看到的验证点</div>
+  <div class="thin-divider"></div>
+  <div class="support-grid">
+    <div v-click class="support-row">
+      <div class="support-key">Preview</div>
+      <div class="support-copy">拖拽创建和路径创建都有连续预览，而不是“松手才突然出现”。</div>
+    </div>
+    <div v-click class="support-row">
+      <div class="support-key">Sync</div>
+      <div class="support-copy">选中状态、属性面板和场景中的图形表现始终同步。</div>
+    </div>
+    <div v-click class="support-row">
+      <div class="support-key">Constraint</div>
+      <div class="support-copy">多选缩放、等比约束和粘贴偏移都能稳定复现。</div>
+    </div>
+    <div v-click class="support-row">
+      <div class="support-key">Replay</div>
+      <div class="support-copy">重开文档仍保留图形、样式和层级信息，证明 I/O 与渲染一致。</div>
+    </div>
   </div>
 </div>
 
 <!--
-如果现场时间紧，这页可以只讲右边四个高频问题。它们基本覆盖了老师最常追问的继承、多态、数据建模和事件反馈环问题。还可以补充两个备用问题：为什么 JSON 版本固定为 2、为什么 transform 不支持旋转。
+高频追问建议放在备注里，不直接投给观众：为什么 ShapeData 用 struct、为什么策略接口析构要 virtual、为什么 ShapeItem 继承 QGraphicsObject、为什么属性面板不会死循环、为什么 JSON 固定 version 2、为什么 transform 不支持旋转。
 -->

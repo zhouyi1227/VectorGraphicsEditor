@@ -1,41 +1,54 @@
 ---
-layout: two-cols
+layout: two-cols-header
 transition: slide-left
 ---
 
 # 图形绘制与命中测试
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
+<div class="deck-lead">
+  图形编辑器不能只把内容“画出来”，还必须保证图形“选得到、点得准、复制得对”。因此绘制路径和命中路径被刻意分开设计。
+</div>
 
 ::left::
 
-<div class="space-y-4 text-sm">
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">`ShapeItem::paint`</div>
-    <div class="text-slate-500">根据 `ShapeType` 选择路径绘制分支，应用描边、填充和 preview 样式。</div>
+<div class="rail-list">
+  <div v-click class="rail-item">
+    <div class="rail-index">DRAW 01</div>
+    <div class="rail-title"><code>ShapeItem::paint</code></div>
+    <div class="rail-copy">根据 <code>ShapeType</code> 选择绘制分支，并统一应用描边、填充与 preview 样式。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">`buildPath` / `buildBasePath`</div>
-    <div class="text-slate-500">把统一的 `ShapeData` 几何信息翻译成 `QPainterPath`，支撑矩形、圆、折线、多边形等不同图形。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">DRAW 02</div>
+    <div class="rail-title"><code>buildPath / buildBasePath</code></div>
+    <div class="rail-copy">把同一份 <code>ShapeData</code> 几何信息翻译成 <code>QPainterPath</code>，支撑矩形、圆、折线、多边形等图元。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-4">
-    <div class="font-semibold text-slate-700 mb-2">`ShapeFactory`</div>
-    <div class="text-slate-500">集中负责 `createItem()` 和 `cloneWithOffset()`，把创建、归一化、复制偏移这些重复动作收拢到一个位置。</div>
+  <div v-click class="rail-item">
+    <div class="rail-index">DRAW 03</div>
+    <div class="rail-title"><code>ShapeFactory</code></div>
+    <div class="rail-copy">集中负责创建、归一化和复制偏移，避免这些重复动作散落在 UI 或事件代码里。</div>
   </div>
 </div>
 
 ::right::
 
-<div class="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm">
-  <div class="font-semibold text-slate-700 mb-3">为什么区分 `boundingRect()` 和 `shape()`</div>
-  <v-clicks>
-
-  - `boundingRect()`：给 Qt 做重绘裁剪和粗粒度包围盒判断。
-  - `shape()`：给鼠标命中测试、选择和碰撞判断提供更精确的路径区域。
-  - 对线段、点这类细图形，需要在命中区域上做适当扩展，否则“看得见但点不中”。
-  - 这也是 `ShapeItemTests` 重点覆盖的内容之一。
-
-  </v-clicks>
+<div class="deck-stage">
+  <div class="eyebrow">命中测试</div>
+  <div class="thin-divider"></div>
+  <div class="rail-list">
+    <div v-click class="rail-item">
+      <div class="rail-title"><code>boundingRect()</code></div>
+      <div class="rail-copy">给 Qt 做重绘裁剪和粗粒度包围盒判断，重点是效率与范围。</div>
+    </div>
+    <div v-click class="rail-item">
+      <div class="rail-title"><code>shape()</code></div>
+      <div class="rail-copy">给鼠标命中测试、选择和碰撞判断提供更精确的路径区域，重点是交互准确性。</div>
+    </div>
+    <div v-click class="rail-item">
+      <div class="rail-title">细图形需要额外扩展</div>
+      <div class="rail-copy">对点和线段这类细图元，如果不扩展交互区域，就会出现“看得见但点不中”的体验问题。</div>
+    </div>
+  </div>
 </div>
 
 <!--

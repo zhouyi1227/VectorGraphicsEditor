@@ -6,21 +6,12 @@ hideInToc: true
 
 # 谢谢各位老师
 
-<div class="mt-5 text-lg text-slate-600">请老师批评指正。</div>
+<div class="mt-6 text-xl text-slate-600">
+  这次答辩展示的是一个完整、可解释、可验证的矢量图形编辑系统。
+</div>
 
-<div class="mt-10 grid grid-cols-3 gap-4 text-sm">
-  <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-    <div class="font-semibold text-slate-700 mb-2">一个完整系统</div>
-    <div class="text-slate-500">从绘制到存储、从 UI 到测试，形成闭环。</div>
-  </div>
-  <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-    <div class="font-semibold text-slate-700 mb-2">一组课程知识点</div>
-    <div class="text-slate-500">继承、多态、抽象类、静态成员、文件 I/O 都有真实落点。</div>
-  </div>
-  <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-    <div class="font-semibold text-slate-700 mb-2">一条可验证路径</div>
-    <div class="text-slate-500">构建、测试、格式检查和讲解口径全部统一。</div>
-  </div>
+<div class="mt-10 text-sm text-slate-400">
+  <code>VectorGraphicsEditor</code> · 面向对象程序设计课程设计
 </div>
 
 <!--

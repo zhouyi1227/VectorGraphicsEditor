@@ -5,17 +5,21 @@ transition: slide-left
 
 # 四层架构
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
-<div class="grid grid-cols-[1.6fr_1fr] gap-6 items-start">
-  <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+<div class="deck-lead">
+  项目按 <code>ui → canvas → graphics → core</code> 四层组织。
+  真正关键的不是名字，而是依赖方向固定、职责边界清楚，因此核心逻辑可以脱离窗口类独立复用和测试。
+</div>
+
+<div class="deck-stage diagram-frame">
 
 ```mermaid
-flowchart TB
-  UI["ui<br/>MainWindow / PropertyPanel / TutorialDialog"]
-  Canvas["canvas<br/>CanvasView / CreationStrategies / Overlay"]
+flowchart LR
+  UI["ui<br/>MainWindow / PropertyPanel"]
+  Canvas["canvas<br/>CanvasView / Strategy / Overlay"]
   Graphics["graphics<br/>ShapeItem / ShapeFactory"]
-  Core["core<br/>ShapeData / FileManager / Geometry / I18n"]
+  Core["core<br/>ShapeData / Geometry / I/O"]
 
   UI --> Canvas
   Canvas --> Graphics
@@ -23,20 +27,17 @@ flowchart TB
   Graphics --> Core
 ```
 
+  <div class="diagram-caption">上层负责组织界面与输入，下层负责图形表达、数据约束和持久化契约。</div>
+</div>
+
+<div class="support-grid mt-5">
+  <div v-click class="support-row">
+    <div class="support-key">Rule 01</div>
+    <div class="support-copy"><code>core</code> 层不依赖 Qt Widgets，因此文件格式、几何约束和测试都不需要借助主窗口才能运行。</div>
   </div>
-  <div class="space-y-4 text-sm">
-    <div v-click class="rounded-xl border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-2">单向依赖</div>
-      <div class="text-slate-500">下层不引用上层，`core` 层完全不依赖 Qt Widgets，可被图形、I/O、测试共同复用。</div>
-    </div>
-    <div v-click class="rounded-xl border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-2">职责分离</div>
-      <div class="text-slate-500">视图分发输入，图形层负责绘制，核心层负责数据和几何，不把业务逻辑堆在主窗口。</div>
-    </div>
-    <div v-click class="rounded-xl border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-2">测试友好</div>
-      <div class="text-slate-500">`vector_graphics_editor_core` 作为静态库可以单独链接测试，几何与文件格式都能脱离 GUI 验证。</div>
-    </div>
+  <div v-click class="support-row">
+    <div class="support-key">Rule 02</div>
+    <div class="support-copy">输入分发留在 <code>canvas</code>，绘制留在 <code>graphics</code>，数据与几何留在 <code>core</code>，每层都只回答自己的问题。</div>
   </div>
 </div>
 

@@ -5,29 +5,45 @@ transition: slide-left
 
 # 选中、变换与几何约束
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-5"></div>
+<div class="deck-rule"></div>
 
-<div class="grid grid-cols-2 gap-4 text-sm mb-5">
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">`SelectionFrame`</div>
-    <div class="text-slate-500">用 `topLeft + xAxis + yAxis` 表达任意朝向矩形框，而不是只用轴对齐包围盒，方便做一致的几何推导。</div>
+<div class="deck-lead">
+  选择与缩放是整个编辑器里最容易出错的环节。为避免拖拽抖动、手柄翻转和圆形被拉歪，几何关系被单独抽象成稳定的中间模型。
+</div>
+
+<div class="process-row mb-6">
+  <div v-click class="process-step">
+    <div class="process-no">GEOM 01</div>
+    <div class="process-title"><code>SelectionFrame</code></div>
+    <div class="process-copy">用 <code>topLeft + xAxis + yAxis</code> 表达朝向矩形，而不是只依赖轴对齐包围盒。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">Overlay + Handle</div>
-    <div class="text-slate-500">选择框覆盖层单独绘制蓝色虚线框和四个角柄，点击手柄优先进入缩放会话。</div>
+  <div v-click class="process-step">
+    <div class="process-no">GEOM 02</div>
+    <div class="process-title">Overlay + Handle</div>
+    <div class="process-copy">覆盖层单独绘制虚线框和四角手柄，点击命中后优先进入缩放会话。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">`CanvasGeometry` 纯函数</div>
-    <div class="text-slate-500">缩放后的目标 frame、frame-to-frame transform、等比缩放和防翻转钳制都在核心层纯函数里完成。</div>
+  <div v-click class="process-step">
+    <div class="process-no">GEOM 03</div>
+    <div class="process-title"><code>CanvasGeometry</code></div>
+    <div class="process-copy">把 frame 变换、等比缩放和防翻转钳制都做成核心层纯函数。</div>
   </div>
-  <div v-click class="rounded-xl border border-slate-200 p-5">
-    <div class="font-semibold text-slate-700 mb-2">交互约束</div>
-    <div class="text-slate-500">`Shift` 保持宽高比，`Esc` 取消当前平移或缩放，多选会话通过快照恢复到操作前状态。</div>
+  <div v-click class="process-step">
+    <div class="process-no">GEOM 04</div>
+    <div class="process-title">交互约束</div>
+    <div class="process-copy"><code>Shift</code> 保持宽高比，<code>Esc</code> 取消当前会话，多选通过快照回滚。</div>
+  </div>
+  <div v-click class="process-step">
+    <div class="process-no">GEOM 05</div>
+    <div class="process-title">测试兜底</div>
+    <div class="process-copy">用专门的几何测试覆盖正交化、等比缩放、角点映射和防翻转行为。</div>
   </div>
 </div>
 
-<div v-click class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-  这部分最容易出“拖拽抖动、手柄翻转、圆形被拉歪”的 bug，所以我把几何关系从 UI 事件里抽了出来，并为其配了独立测试。
+<div v-click class="deck-stage tight">
+  <div class="statement-band">
+    核心思路是把“鼠标怎么动”翻译成“框架怎么变”。
+    一旦这层抽象稳定，UI 事件代码就不会再承担全部几何推导负担。
+  </div>
 </div>
 
 <!--

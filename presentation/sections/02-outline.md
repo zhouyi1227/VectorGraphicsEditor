@@ -6,25 +6,31 @@ hideInToc: true
 
 # 目录
 
-<div class="h-[2px] w-10 bg-sky-500 mt-2 mb-6"></div>
+<div class="deck-rule"></div>
 
-<div class="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-  <div class="rounded-xl border border-slate-200 bg-slate-50 p-5">
-    <div class="text-sm text-slate-500 mb-4">本次答辩按照“目标 → 功能 → 架构 → 关键实现 → 质量保障 → Q&A”展开。</div>
+<div class="deck-lead">
+  讲述路线只保留一条主线：先说明项目要解决什么问题，再展示系统如何组织，最后用关键实现与质量证据回答“为什么这样设计”。
+</div>
+
+<div class="split-2">
+  <div class="deck-stage">
     <Toc columns="2" minDepth="1" maxDepth="1" />
   </div>
-  <div class="space-y-3 text-sm">
-    <div class="rounded-lg border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-1">讲解重点</div>
-      <div class="text-slate-500">四层架构、策略模式、`ShapeData`、选择变换几何、文件格式与测试。</div>
+  <div class="rail-list">
+    <div v-click class="rail-item">
+      <div class="rail-index">FOCUS 01</div>
+      <div class="rail-title">系统先于代码</div>
+      <div class="rail-copy">先建立功能闭环和架构边界，再进入类、接口和几何逻辑。</div>
     </div>
-    <div class="rounded-lg border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-1">答辩视角</div>
-      <div class="text-slate-500">不仅展示“能用”，还解释“为什么这样设计”。</div>
+    <div v-click class="rail-item">
+      <div class="rail-index">FOCUS 02</div>
+      <div class="rail-title">实现先于术语</div>
+      <div class="rail-copy">每个知识点都对应到真实文件、真实交互或真实测试，而不是空讲定义。</div>
     </div>
-    <div class="rounded-lg border border-slate-200 p-4">
-      <div class="font-semibold text-slate-700 mb-1">时间分配</div>
-      <div class="text-slate-500">前半段讲系统，后半段讲课程知识点落地和可验证质量。</div>
+    <div v-click class="rail-item">
+      <div class="rail-index">FOCUS 03</div>
+      <div class="rail-title">证据先于结论</div>
+      <div class="rail-copy">最后会用文件格式、测试、构建链路和现场操作证明系统稳定可验证。</div>
     </div>
   </div>
 </div>
