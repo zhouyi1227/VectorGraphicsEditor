@@ -524,12 +524,16 @@ jobs:
           VERIFY_ROOT="$PWD/rpm-smoke-root"
           rm -rf "$VERIFY_ROOT"
           mkdir -p "$VERIFY_ROOT"
+          dnf --version
+          dnf repolist
           dnf install -y \
             --nogpgcheck \
+            --use-host-config \
             --installroot "$VERIFY_ROOT" \
             --releasever "$(rpm -E %fedora)" \
             --setopt=install_weak_deps=False \
             "$RPM_FILE"
+          test -x "$VERIFY_ROOT/usr/VectorGraphicsEditor"
           QT_QPA_PLATFORM=offscreen chroot "$VERIFY_ROOT" /usr/VectorGraphicsEditor >/tmp/vector-graphics-editor-rpm.log 2>&1 &
           APP_PID=$!
           sleep 5
