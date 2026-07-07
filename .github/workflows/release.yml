@@ -1,0 +1,178 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Windows Release
+    runs-on: windows-latest
+
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push'
+      )
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.tag }}
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: version
+        shell: bash
+        run: |
+          git fetch --tags --force
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            SHA="${{ github.event.workflow_run.head_sha }}"
+            TAG="$(git tag --points-at "$SHA" | grep -E '^v[0-9]+(\.[0-9]+)*([.-][A-Za-z0-9._-]+)?$' | head -n 1 || true)"
+          fi
+
+          if [ -z "$TAG" ]; then
+            echo "No release tag points at this CI-passed commit. Skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Release tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup MSYS2 UCRT64
+        if: steps.version.outputs.should_release == 'true'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-clang-tools-extra
+
+      - name: Diagnose toolchain
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          echo "MSYSTEM=$MSYSTEM"
+          echo "MINGW_PREFIX=$MINGW_PREFIX"
+          which g++
+          g++ --version
+          which cmake
+          cmake --version
+          which ninja
+          ninja --version
+
+      - name: Configure Release build
+        if: steps.version.outputs.should_release == 'true'
+        run: >
+          cmake -S . -B out/build/windows-release-ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_PREFIX_PATH="$MINGW_PREFIX"
+          -DBUILD_TESTING=ON
+          -DVECTOR_GRAPHICS_EDITOR_ENABLE_WARNINGS=ON
+          -DVECTOR_GRAPHICS_EDITOR_ENABLE_CLANG_TIDY=OFF
+
+      - name: Build Release
+        if: steps.version.outputs.should_release == 'true'
+        run: cmake --build out/build/windows-release-ci
+
+      - name: Test Release
+        if: steps.version.outputs.should_release == 'true'
+        run: ctest --test-dir out/build/windows-release-ci --output-on-failure
+
+      - name: Stage application
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          mkdir -p dist/VectorGraphicsEditor
+
+          EXE_PATH="$(find out/build/windows-release-ci -name 'VectorGraphicsEditor.exe' -type f | head -n 1)"
+
+          if [ -z "$EXE_PATH" ]; then
+            echo "VectorGraphicsEditor.exe not found."
+            find out/build/windows-release-ci -maxdepth 4 -type f
+            exit 1
+          fi
+
+          echo "Found executable: $EXE_PATH"
+          cp "$EXE_PATH" dist/VectorGraphicsEditor/
+
+          if command -v windeployqt >/dev/null 2>&1; then
+            DEPLOYQT=windeployqt
+          elif command -v windeployqt6 >/dev/null 2>&1; then
+            DEPLOYQT=windeployqt6
+          else
+            echo "windeployqt not found."
+            exit 1
+          fi
+
+          "$DEPLOYQT" --release --compiler-runtime --dir dist/VectorGraphicsEditor dist/VectorGraphicsEditor/VectorGraphicsEditor.exe
+
+          for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
+            if [ -f "$MINGW_PREFIX/bin/$dll" ]; then
+              cp "$MINGW_PREFIX/bin/$dll" dist/VectorGraphicsEditor/
+            fi
+          done
+
+          cp README.md dist/VectorGraphicsEditor/ || true
+          cp LICENSE dist/VectorGraphicsEditor/ || true
+
+      - name: Create ZIP package
+        if: steps.version.outputs.should_release == 'true'
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path dist/VectorGraphicsEditor `
+            -DestinationPath dist/VectorGraphicsEditor-windows-ucrt64-${{ steps.version.outputs.tag }}.zip `
+            -Force
+
+      - name: Upload package artifact
+        if: steps.version.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: VectorGraphicsEditor-windows-ucrt64-${{ steps.version.outputs.tag }}
+          path: dist/VectorGraphicsEditor-windows-ucrt64-${{ steps.version.outputs.tag }}.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: VectorGraphicsEditor ${{ steps.version.outputs.tag }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.tag, '-') }}
+          files: |
+            dist/VectorGraphicsEditor-windows-ucrt64-${{ steps.version.outputs.tag }}.zip
