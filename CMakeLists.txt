@@ -132,11 +132,14 @@ endif()
 # DEB
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "CourseProject")
 set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins, libqt6widgets6, libqt6gui6, libqt6core6")
 
 # RPM
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Graphics")
+set(CPACK_RPM_PACKAGE_AUTOREQ ON)
+set(CPACK_RPM_PACKAGE_AUTOPROV ON)
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui >= 6.2")
 
 # NSIS (Windows)

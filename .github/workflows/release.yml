@@ -28,7 +28,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -62,7 +62,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup MSYS2 UCRT64
         uses: msys2/setup-msys2@v2
@@ -98,9 +98,35 @@ jobs:
           cp "$EXE" dist/portable/
           DEPLOYQT="$(which windeployqt 2>/dev/null || which windeployqt6)"
           "$DEPLOYQT" --release --compiler-runtime --dir dist/portable dist/portable/VectorGraphicsEditor.exe
-          for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
-            [ -f "$MINGW_PREFIX/bin/$dll" ] && cp "$MINGW_PREFIX/bin/$dll" dist/portable/
+          find dist/portable -type f \( -name '*.exe' -o -name '*.dll' \) | while read -r binary; do
+            ldd "$binary" | awk '
+              $3 ~ /\.dll$/ { print $3 }
+              $1 ~ /^\// && $1 ~ /\.dll$/ { print $1 }
+            ' | while read -r dll; do
+              case "$dll" in
+                "$MINGW_PREFIX"/bin/*) cp -f "$dll" dist/portable/ ;;
+              esac
+            done
           done
+
+      - name: Smoke test portable bundle
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist/portable/VectorGraphicsEditor.exe').Path
+          $env:QT_QPA_PLATFORM = 'windows'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($proc.HasExited) {
+              throw "Portable bundle exited early with code $($proc.ExitCode)."
+            }
+          }
+          finally {
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+            Wait-Process -Id $proc.Id -ErrorAction SilentlyContinue
+          }
 
       - name: Package portable ZIP
         shell: pwsh
@@ -119,7 +145,40 @@ jobs:
             installer.nsi
           mv "VectorGraphicsEditor-${VERSION}-windows-amd64-setup.exe" ..
 
-      - uses: actions/upload-artifact@v6
+      - name: Smoke test NSIS installer
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path "dist/VectorGraphicsEditor-$env:VERSION-windows-amd64-setup.exe").Path
+          $installRoot = Join-Path $env:RUNNER_TEMP 'VectorGraphicsEditor-smoke-amd64'
+          Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+          $install = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installRoot" -WindowStyle Hidden -PassThru -Wait
+          if ($install.ExitCode -ne 0) {
+            throw "Installer exited with code $($install.ExitCode)."
+          }
+
+          $exe = Join-Path $installRoot 'VectorGraphicsEditor.exe'
+          if (-not (Test-Path $exe)) {
+            throw "Installed executable not found at $exe."
+          }
+
+          $env:QT_QPA_PLATFORM = 'windows'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory $installRoot -WindowStyle Hidden -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($proc.HasExited) {
+              throw "Installed app exited early with code $($proc.ExitCode)."
+            }
+          }
+          finally {
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+            Wait-Process -Id $proc.Id -ErrorAction SilentlyContinue
+            Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-amd64
           path: |
@@ -143,7 +202,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup MSYS2 CLANGARM64
         uses: msys2/setup-msys2@v2
@@ -178,14 +237,40 @@ jobs:
           cp "$EXE" dist/portable/
           DEPLOYQT="$(which windeployqt 2>/dev/null || which windeployqt6)"
           "$DEPLOYQT" --release --compiler-runtime --dir dist/portable dist/portable/VectorGraphicsEditor.exe
-          for dll in libc++.dll libunwind.dll; do
-            [ -f "$MINGW_PREFIX/bin/$dll" ] && cp "$MINGW_PREFIX/bin/$dll" dist/portable/
+          find dist/portable -type f \( -name '*.exe' -o -name '*.dll' \) | while read -r binary; do
+            ldd "$binary" | awk '
+              $3 ~ /\.dll$/ { print $3 }
+              $1 ~ /^\// && $1 ~ /\.dll$/ { print $1 }
+            ' | while read -r dll; do
+              case "$dll" in
+                "$MINGW_PREFIX"/bin/*) cp -f "$dll" dist/portable/ ;;
+              esac
+            done
           done
           for pat in libfreetype* libpng16* libmd4c* libharfbuzz*; do
             for dll in "$MINGW_PREFIX"/bin/$pat; do
-              [ -f "$dll" ] && cp "$dll" dist/portable/
+              [ -f "$dll" ] && cp -f "$dll" dist/portable/
             done
           done
+
+      - name: Smoke test portable bundle
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist/portable/VectorGraphicsEditor.exe').Path
+          $env:QT_QPA_PLATFORM = 'windows'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            if ($proc.HasExited) {
+              throw "Portable bundle exited early with code $($proc.ExitCode)."
+            }
+          }
+          finally {
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+            Wait-Process -Id $proc.Id -ErrorAction SilentlyContinue
+          }
 
       - name: Package portable ZIP
         shell: pwsh
@@ -195,7 +280,7 @@ jobs:
             -DestinationPath "dist/VectorGraphicsEditor-$env:VERSION-windows-arm64.zip" `
             -Force
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-arm64
           path: dist/VectorGraphicsEditor-*-windows-arm64.zip
@@ -215,7 +300,7 @@ jobs:
       HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install dependencies
         env:
@@ -236,85 +321,55 @@ jobs:
           cmake --build build
           ctest --test-dir build --output-on-failure
 
-      - name: Deploy Qt frameworks
+      - name: Deploy Qt app bundle
         env:
           HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
-          set -euo pipefail
-
           APP="$(find build -name VectorGraphicsEditor.app -type d | head -1)"
-          if [ -z "$APP" ]; then
-            echo "ERROR: VectorGraphicsEditor.app not found under build/"
-            exit 1
-          fi
-          echo "App bundle: $APP"
-          ls -R "$APP/Contents/MacOS/"
-
           QT_DIR="$(brew --prefix qt)"
-          echo "Qt prefix: $QT_DIR"
-          ls "$QT_DIR"/lib/Qt*.framework 2>/dev/null || ls "$QT_DIR"/lib/libQt*.dylib 2>/dev/null || true
-
-          exe="$APP/Contents/MacOS/VectorGraphicsEditor"
-          FW_DST="$APP/Contents/Frameworks"
-          mkdir -p "$FW_DST"
-
-          # Copy Qt frameworks from brew
-          for lib in QtCore QtGui QtWidgets QtDBus; do
-            FW="$QT_DIR/lib/${lib}.framework"
-            if [ -d "$FW" ]; then
-              echo "Copying framework: $lib"
-              cp -R "$FW" "$FW_DST/"
-            elif [ -f "$QT_DIR/lib/lib${lib}.dylib" ]; then
-              echo "Copying dylib: lib${lib}.dylib"
-              cp "$QT_DIR/lib/lib${lib}.dylib" "$FW_DST/"
-            else
-              echo "WARNING: $lib not found at expected paths"
-            fi
-          done
-
-          echo "Frameworks after copy:"
-          ls "$FW_DST/"
-
-          # Rewrite binary's Qt load commands — use otool -L to find
-          # the actual install names (brew uses Cellar paths, not /opt symlinks)
-          while IFS= read -r line; do
-            old=$(echo "$line" | awk '{print $1}')
-            case "$old" in
-              */Qt*.framework/*)
-                # e.g. /opt/homebrew/Cellar/qt/6.x/lib/QtCore.framework/Versions/A/QtCore
-                fw=$(echo "$old" | grep -oE 'Qt[^/]*\.framework')
-                base=$(basename "$old")
-                new="@executable_path/../Frameworks/$fw/Versions/A/$base"
-                echo "  change $old -> $new"
-                install_name_tool -change "$old" "$new" "$exe"
-                ;;
-              */libQt*.dylib)
-                new="@executable_path/../Frameworks/$(basename "$old")"
-                echo "  change $old -> $new"
-                install_name_tool -change "$old" "$new" "$exe"
-                ;;
-            esac
-          done < <(otool -L "$exe" | tail -n +2)
-
-          install_name_tool -add_rpath "@executable_path/../Frameworks" "$exe"
-
-          # Copy platform plugins
-          mkdir -p "$APP/Contents/PlugIns/platforms"
-          for pf in "$QT_DIR"/plugins/platforms/libq*.dylib; do
-            [ -f "$pf" ] && cp "$pf" "$APP/Contents/PlugIns/platforms/"
-          done
-          echo "Platforms after deploy:"
-          ls "$APP/Contents/PlugIns/platforms/"
-
+          MACDEPLOYQT="$QT_DIR/bin/macdeployqt"
+          "$MACDEPLOYQT" "$APP" -verbose=2
           find "$APP/Contents" -name '*.h' -delete 2>/dev/null || true
 
-          echo "=== Final binary dependencies ==="
-          otool -L "$exe"
+      - name: Verify deployed Qt references
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+        run: |
+          APP="$(find build -name VectorGraphicsEditor.app -type d | head -1)"
+          QT_DIR="$(brew --prefix qt)"
+          MAIN_BIN="$APP/Contents/MacOS/VectorGraphicsEditor"
+          PLATFORM_PLUGIN="$APP/Contents/PlugIns/platforms/libqcocoa.dylib"
+          otool -L "$MAIN_BIN"
+          otool -L "$PLATFORM_PLUGIN"
+          if otool -L "$MAIN_BIN" "$PLATFORM_PLUGIN" | grep -F "$QT_DIR" >/dev/null; then
+            echo "ERROR: App bundle still references Homebrew Qt paths."
+            exit 1
+          fi
+
+      - name: Smoke test app bundle
+        run: |
+          APP="$(find build -name VectorGraphicsEditor.app -type d | head -1)"
+          LOG_FILE="$(mktemp)"
+          export QT_QPA_PLATFORM=cocoa
+          "$APP/Contents/MacOS/VectorGraphicsEditor" >"$LOG_FILE" 2>&1 &
+          APP_PID=$!
+          sleep 5
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            cat "$LOG_FILE"
+            wait "$APP_PID"
+            exit 1
+          fi
+          kill "$APP_PID" 2>/dev/null || true
+          wait "$APP_PID" || true
 
       - name: Create DMG
         run: |
           APP="$(find build -name VectorGraphicsEditor.app -type d | head -1)"
+          STAGING_DIR="$PWD/dist/dmg-root"
           DMG="VectorGraphicsEditor-${VERSION}-macos-arm64.dmg"
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR"
+          cp -R "$APP" "$STAGING_DIR/"
           create-dmg \
             --volname "VectorGraphicsEditor" \
             --window-pos 200 120 \
@@ -323,9 +378,24 @@ jobs:
             --icon "VectorGraphicsEditor.app" 150 190 \
             --hide-extension "VectorGraphicsEditor.app" \
             --app-drop-link 450 190 \
-            "$DMG" "$APP"
+            "$DMG" "$STAGING_DIR"
 
-      - uses: actions/upload-artifact@v6
+      - name: Verify DMG contents
+        run: |
+          DMG="VectorGraphicsEditor-${VERSION}-macos-arm64.dmg"
+          MOUNT_DIR="$(mktemp -d)"
+          trap 'hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true' EXIT
+          hdiutil attach "$DMG" -mountpoint "$MOUNT_DIR" -nobrowse
+          APP_ROOT="$MOUNT_DIR/VectorGraphicsEditor.app"
+          test -d "$APP_ROOT"
+          test -d "$APP_ROOT/Contents/Frameworks/QtCore.framework"
+          test -d "$APP_ROOT/Contents/Frameworks/QtGui.framework"
+          test -d "$APP_ROOT/Contents/Frameworks/QtWidgets.framework"
+          test -f "$APP_ROOT/Contents/Info.plist"
+          trap - EXIT
+          hdiutil detach "$MOUNT_DIR"
+
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-arm64
           path: VectorGraphicsEditor-*-macos-arm64.dmg
@@ -344,12 +414,12 @@ jobs:
       QT_QPA_PLATFORM: offscreen
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake ninja-build qt6-base-dev
+          sudo apt install -y build-essential cmake ninja-build qt6-base-dev dpkg-dev file
 
       - name: Build Release
         run: |
@@ -371,7 +441,32 @@ jobs:
             -D CPACK_DEBIAN_PACKAGE_MAINTAINER="CourseProject" \
             -D CPACK_PACKAGE_FILE_NAME="VectorGraphicsEditor-${VERSION}-linux-amd64"
 
-      - uses: actions/upload-artifact@v6
+      - name: Inspect .deb metadata
+        run: |
+          DEB_FILE="$(find build -maxdepth 1 -name 'VectorGraphicsEditor-*.deb' -type f | head -1)"
+          dpkg-deb -I "$DEB_FILE"
+          dpkg-deb -f "$DEB_FILE" Depends
+
+      - name: Smoke test .deb in clean container
+        run: |
+          DEB_FILE="$(basename "$(find build -maxdepth 1 -name 'VectorGraphicsEditor-*.deb' -type f | head -1)")"
+          docker run --rm -v "$PWD/build:/artifacts:ro" ubuntu:24.04 bash -lc "
+            set -euo pipefail
+            apt-get update
+            apt-get install -y /artifacts/$DEB_FILE
+            QT_QPA_PLATFORM=offscreen /usr/VectorGraphicsEditor >/tmp/vector-graphics-editor.log 2>&1 &
+            APP_PID=\$!
+            sleep 5
+            if ! kill -0 \$APP_PID 2>/dev/null; then
+              cat /tmp/vector-graphics-editor.log
+              wait \$APP_PID
+              exit 1
+            fi
+            kill \$APP_PID 2>/dev/null || true
+            wait \$APP_PID || true
+          "
+
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-deb
           path: build/VectorGraphicsEditor-*.deb
@@ -391,7 +486,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -417,17 +512,46 @@ jobs:
             -D CPACK_RPM_PACKAGE_LICENSE="MIT" \
             -D CPACK_PACKAGE_FILE_NAME="VectorGraphicsEditor-${VERSION}-linux-amd64"
 
-      - uses: actions/upload-artifact@v6
+      - name: Inspect .rpm metadata
+        run: |
+          RPM_FILE="$(find build -maxdepth 1 -name 'VectorGraphicsEditor-*.rpm' -type f | head -1)"
+          rpm -qip "$RPM_FILE"
+          rpm -qpR "$RPM_FILE"
+
+      - name: Smoke test .rpm in clean installroot
+        run: |
+          RPM_FILE="$(find build -maxdepth 1 -name 'VectorGraphicsEditor-*.rpm' -type f | head -1)"
+          VERIFY_ROOT="$PWD/rpm-smoke-root"
+          rm -rf "$VERIFY_ROOT"
+          mkdir -p "$VERIFY_ROOT"
+          dnf install -y \
+            --nogpgcheck \
+            --installroot "$VERIFY_ROOT" \
+            --releasever "$(rpm -E %fedora)" \
+            --setopt=install_weak_deps=False \
+            "$RPM_FILE"
+          QT_QPA_PLATFORM=offscreen chroot "$VERIFY_ROOT" /usr/VectorGraphicsEditor >/tmp/vector-graphics-editor-rpm.log 2>&1 &
+          APP_PID=$!
+          sleep 5
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            cat /tmp/vector-graphics-editor-rpm.log
+            wait "$APP_PID"
+            exit 1
+          fi
+          kill "$APP_PID" 2>/dev/null || true
+          wait "$APP_PID" || true
+
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-rpm
           path: build/VectorGraphicsEditor-*.rpm
           if-no-files-found: error
 
   # ======================================================================
-  #  Linux — Arch (.pkg.tar.zst)
+  #  Linux — Arch (tar.zst)
   # ======================================================================
   linux-arch:
-    name: Linux Arch (.pkg.tar.zst)
+    name: Linux Arch (tar.zst)
     needs: resolve-tag
     runs-on: ubuntu-latest
     container: archlinux:latest
@@ -437,7 +561,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -456,19 +580,37 @@ jobs:
           cmake --build build
           ctest --test-dir build --output-on-failure
 
-      - name: Create Arch package (tar.zst)
+      - name: Create Arch install tree archive
         run: |
           DESTDIR="$PWD/pkg" cmake --install build
           cd pkg
-          tar -caf "../VectorGraphicsEditor-${VERSION}-linux-amd64.pkg.tar.zst" \
+          tar -caf "../VectorGraphicsEditor-${VERSION}-linux-amd64.tar.zst" \
             --zstd \
             --owner=0 --group=0 \
             .
 
-      - uses: actions/upload-artifact@v6
+      - name: Smoke test Arch install tree
+        run: |
+          ARCHIVE_FILE="$(find . -maxdepth 1 -name 'VectorGraphicsEditor-*-linux-amd64.tar.zst' -type f | head -1)"
+          VERIFY_ROOT="$PWD/arch-smoke-root"
+          rm -rf "$VERIFY_ROOT"
+          mkdir -p "$VERIFY_ROOT"
+          tar -xaf "$ARCHIVE_FILE" -C "$VERIFY_ROOT"
+          QT_QPA_PLATFORM=offscreen "$VERIFY_ROOT/usr/VectorGraphicsEditor" >/tmp/vector-graphics-editor-arch.log 2>&1 &
+          APP_PID=$!
+          sleep 5
+          if ! kill -0 "$APP_PID" 2>/dev/null; then
+            cat /tmp/vector-graphics-editor-arch.log
+            wait "$APP_PID"
+            exit 1
+          fi
+          kill "$APP_PID" 2>/dev/null || true
+          wait "$APP_PID" || true
+
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-arch
-          path: VectorGraphicsEditor-*-linux-amd64.pkg.tar.zst
+          path: VectorGraphicsEditor-*-linux-amd64.tar.zst
           if-no-files-found: error
 
   # ======================================================================
@@ -489,7 +631,7 @@ jobs:
       TAG: ${{ needs.resolve-tag.outputs.tag }}
 
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -498,7 +640,7 @@ jobs:
         run: ls -la artifacts/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG }}
           name: VectorGraphicsEditor ${{ env.TAG }}
