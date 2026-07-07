@@ -41,14 +41,32 @@ jobs:
             mingw-w64-ucrt-x86_64-qt6-base
             mingw-w64-ucrt-x86_64-clang-tools-extra
 
+      - name: Diagnose toolchain
+        run: |
+          echo "MSYSTEM=$MSYSTEM"
+          echo "MINGW_PREFIX=$MINGW_PREFIX"
+          which g++
+          g++ --version
+          which cmake
+          cmake --version
+          which ninja
+          ninja --version
+
       - name: Configure
-        run: cmake --preset windows-ucrt64-debug
+        run: >
+          cmake -S . -B out/build/windows-ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_PREFIX_PATH="$MINGW_PREFIX"
+          -DBUILD_TESTING=ON
+          -DVECTOR_GRAPHICS_EDITOR_ENABLE_WARNINGS=ON
+          -DVECTOR_GRAPHICS_EDITOR_ENABLE_CLANG_TIDY=OFF
 
       - name: Format check
-        run: cmake --build --preset build-ucrt64-debug --target format-check
+        run: cmake --build out/build/windows-ci --target format-check
 
       - name: Build
-        run: cmake --build --preset build-ucrt64-debug
+        run: cmake --build out/build/windows-ci
 
       - name: Test
-        run: ctest --preset test-ucrt64-debug --output-on-failure
+        run: ctest --test-dir out/build/windows-ci --output-on-failure
